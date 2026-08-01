@@ -1,5 +1,5 @@
 import express from "express";
-import { subscribe, getSubscribers, removeSubscriber } from "../controllers/newsletterController.js";
+import { subscribe, getSubscribers, removeSubscriber } from "../controllers/newsLetterController.js";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
 
