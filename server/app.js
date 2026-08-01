@@ -15,10 +15,37 @@ import redirectRoutes from "./routes/redirectRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import newsLetterRoutes from "./routes/newsLetterRoutes.js"
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
+import connectDB from "./config/db.js";
 
 const app = express();
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-app.use(cors());
+let databaseConnection;
+
+app.use(async (req, res, next) => {
+    try {
+        databaseConnection ||= connectDB();
+        await databaseConnection;
+        next();
+    } catch (error) {
+        databaseConnection = null;
+        next(error);
+    }
+});
+
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+
+        callback(new Error("Origin is not allowed by CORS"));
+    },
+}));
 
 app.use(express.json())
 

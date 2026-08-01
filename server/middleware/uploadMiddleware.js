@@ -2,7 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-const uploadDir = "uploads/";
+const uploadDir = process.env.VERCEL ? "/tmp/ootdify-uploads" : "uploads/";
 
 if(!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, {recursive: true});
@@ -29,7 +29,8 @@ const fileFilter = (req, file, cb) => {
     }
 }
 
-const upload = multer({storage, fileFilter, limits: {fileSize: 5 * 1024 * 1024}});
+// Vercel Functions accept payloads up to 4.5 MB, including multipart overhead.
+const upload = multer({storage, fileFilter, limits: {fileSize: 4 * 1024 * 1024}});
 
 export const uploadSingleImage = upload.single("image");
 
