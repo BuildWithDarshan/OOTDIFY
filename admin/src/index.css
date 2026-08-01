@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+
+@theme {
+  --font-display: "Instrument Serif", serif;
+  --font-body: "Inter", sans-serif;
+
+  --color-white: #FFFFFF;
+  --color-black: #081C15;
+
+  --color-green-50: #D8F3DC;
+  --color-green-100: #B7E4C7;
+  --color-green-200: #95D5B2;
+  --color-green-300: #74C69D;
+  --color-green-400: #52B788;
+  --color-green-500: #40916C;
+  --color-green-600: #2D6A4F;
+  --color-green-700: #1B4332;
+  --color-green-800: #081C15;
+
+  --color-bg: var(--color-white);
+  --color-bg-subtle: var(--color-green-50);
+
+  --color-text-primary: var(--color-green-800);
+  --color-text-secondary: var(--color-green-600);
+  --color-text-muted: var(--color-green-400);
+
+  --color-border: var(--color-green-100);
+  --color-border-strong: var(--color-green-300);
+
+  --color-accent: var(--color-green-500);
+  --color-accent-hover: var(--color-green-600);
+  --color-accent-subtle: var(--color-green-100);
+
+  --color-on-accent: var(--color-white);
+}
