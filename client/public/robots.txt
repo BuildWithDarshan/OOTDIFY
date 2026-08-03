@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ootdify-style.vercel.app/sitemap.xml
