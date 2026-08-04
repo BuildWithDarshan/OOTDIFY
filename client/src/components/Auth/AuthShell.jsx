@@ -1,7 +1,7 @@
 import logo from "../../assets/logos/ootdify-logo-trimmed.png";
 
-const AuthShell = ({ eyebrow, children }) => (
-  <main className="auth-shell relative flex min-h-[100svh] items-start justify-center overflow-x-hidden bg-[#f5f7f4] px-3 py-4 font-body sm:items-center sm:px-6 sm:py-5">
+const AuthShell = ({ eyebrow, icon: Icon, children }) => (
+  <main className="auth-shell flex min-h-[100svh] items-start justify-center overflow-x-hidden bg-bg-subtle/55 px-4 py-4 font-body sm:items-center sm:px-6 sm:py-5">
     <style>{`
       @keyframes authReveal {
         from { opacity: 0; transform: translate3d(0, 24px, 0); }
@@ -13,31 +13,36 @@ const AuthShell = ({ eyebrow, children }) => (
         to { opacity: 1; transform: scaleX(1); }
       }
 
-      .auth-shell::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background:
-          linear-gradient(rgba(15, 62, 47, .035) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(15, 62, 47, .035) 1px, transparent 1px);
-        background-size: 5rem 5rem;
-        mask-image: linear-gradient(to bottom, black, transparent 92%);
-      }
-
       .auth-reveal-brand {
         opacity: 0;
-        animation: authReveal .85s cubic-bezier(.22, 1, .36, 1) .08s forwards;
+        animation: authReveal 700ms cubic-bezier(.16, 1, .3, 1) .05s forwards;
       }
 
       .auth-reveal-form {
         opacity: 0;
-        animation: authReveal .9s cubic-bezier(.22, 1, .36, 1) .24s forwards;
+        animation: authReveal 700ms cubic-bezier(.16, 1, .3, 1) .15s forwards;
       }
 
       .auth-rule {
         transform-origin: center;
         animation: authLineReveal 1s cubic-bezier(.22, 1, .36, 1) .45s both;
+      }
+
+      .auth-form-center,
+      .auth-form-center .cl-rootBox,
+      .auth-form-center .cl-cardBox {
+        width: 100% !important;
+        max-width: 30rem !important;
+        margin-inline: auto !important;
+      }
+
+      .auth-form-center .cl-rootBox {
+        display: flex !important;
+        justify-content: center !important;
+      }
+
+      .auth-form-center .cl-card {
+        width: 100% !important;
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -51,35 +56,31 @@ const AuthShell = ({ eyebrow, children }) => (
       }
     `}</style>
 
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute left-0 top-0 h-full w-1.5 bg-[#0a3528] sm:w-2"
-    />
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[#dceee4] sm:h-80 sm:w-80"
-    />
-
-    <section className="relative z-10 w-full max-w-[30rem]">
+    <section className="w-full max-w-[30rem]">
       <header className="auth-reveal-brand mb-3 flex flex-col items-center sm:mb-4">
-        <div className="px-5 py-1.5">
+        <div className="px-5 py-1">
           <img
             src={logo}
             alt="OOTDIFY"
-            className="h-auto w-[7.5rem] object-contain sm:w-[8.5rem]"
+            className="h-auto w-[7.25rem] object-contain sm:w-[8rem]"
           />
         </div>
 
-        <div className="mt-2 flex w-full items-center gap-3 px-5 sm:mt-2.5">
-          <span className="auth-rule h-px flex-1 bg-gradient-to-r from-transparent to-[#6a9c87]/60" />
-          <p className="text-center text-[0.62rem] font-semibold uppercase tracking-[0.25em] text-[#376b59] sm:text-[0.68rem]">
-            {eyebrow}
-          </p>
-          <span className="auth-rule h-px flex-1 bg-gradient-to-l from-transparent to-[#6a9c87]/60" />
+        <div className="mt-2 flex w-full items-center gap-3 px-4">
+          <span className="auth-rule h-px flex-1 bg-gradient-to-r from-transparent to-border-strong" />
+          <div className="flex items-center gap-2 text-accent-hover">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-bg border border-border">
+              <Icon className="h-3.5 w-3.5" />
+            </span>
+            <p className="text-center text-[0.62rem] font-semibold uppercase tracking-[0.2em] sm:text-[0.68rem]">
+              {eyebrow}
+            </p>
+          </div>
+          <span className="auth-rule h-px flex-1 bg-gradient-to-l from-transparent to-border-strong" />
         </div>
       </header>
 
-      <div className="auth-reveal-form">
+      <div className="auth-form-center auth-reveal-form flex w-full justify-center">
         {children}
       </div>
     </section>
