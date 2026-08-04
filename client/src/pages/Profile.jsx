@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useClerk } from "@clerk/react";
 import {
   ArrowRight,
   CheckCircle2,
-  Eye,
-  EyeOff,
   Heart,
-  LockKeyhole,
   Mail,
   Save,
   ShieldCheck,
@@ -16,7 +14,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { updateProfile } from "../services/userService.js";
-import { changePassword } from "../services/authService.js";
 
 const fieldShellClass =
   "flex w-full min-w-0 items-center overflow-hidden rounded-xl border border-border bg-bg transition-all duration-300 hover:border-border-strong focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10";
@@ -28,6 +25,7 @@ const fieldIconClass =
   "flex w-11 shrink-0 items-center justify-center self-stretch text-text-muted";
 
 const ProfileContent = ({ user, updateUserInfo }) => {
+  const { openUserProfile } = useClerk();
   const [name, setName] = useState(user?.name || "");
   const [preferredGender, setPreferredGender] = useState(
     user?.preferredGender || "",
@@ -38,14 +36,6 @@ const ProfileContent = ({ user, updateUserInfo }) => {
   const [nameError, setNameError] = useState("");
   const [nameSuccess, setNameSuccess] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
-
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [pwError, setPwError] = useState("");
-  const [pwSuccess, setPwSuccess] = useState("");
-  const [pwSaving, setPwSaving] = useState(false);
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
@@ -82,35 +72,6 @@ const ProfileContent = ({ user, updateUserInfo }) => {
       setNameError(error.response?.data?.message || "Something went wrong.");
     } finally {
       setNameSaving(false);
-    }
-  };
-
-  const handlePasswordSubmit = async (event) => {
-    event.preventDefault();
-    setPwError("");
-    setPwSuccess("");
-
-    if (!currentPassword || !newPassword) {
-      setPwError("Both fields are required.");
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      setPwError("New password must be at least 6 characters.");
-      return;
-    }
-
-    setPwSaving(true);
-
-    try {
-      await changePassword({ currentPassword, newPassword });
-      setPwSuccess("Password changed successfully.");
-      setCurrentPassword("");
-      setNewPassword("");
-    } catch (error) {
-      setPwError(error.response?.data?.message || "Something went wrong.");
-    } finally {
-      setPwSaving(false);
     }
   };
 
@@ -326,136 +287,40 @@ const ProfileContent = ({ user, updateUserInfo }) => {
             </button>
           </form>
 
-          <form
-            onSubmit={handlePasswordSubmit}
-            className="profile-card-right rounded-[1.75rem] border border-border/80 bg-bg p-5 shadow-[0_12px_38px_rgba(8,28,21,0.06)] transition-all duration-500 hover:shadow-[0_18px_48px_rgba(8,28,21,0.09)] sm:p-7"
-          >
+          <section className="profile-card-right rounded-[1.75rem] border border-border/80 bg-bg p-5 shadow-[0_12px_38px_rgba(8,28,21,0.06)] transition-all duration-500 hover:shadow-[0_18px_48px_rgba(8,28,21,0.09)] sm:p-7">
             <div className="mb-6 flex items-center gap-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-bg-subtle text-accent-hover">
                 <ShieldCheck className="h-4.5 w-4.5" />
               </span>
               <div>
                 <h2 className="font-display text-2xl italic text-text-primary">
-                  Change Password
+                  Account Security
                 </h2>
                 <p className="text-xs text-text-muted">
-                  Choose a strong password for your account.
+                  Managed securely through your Clerk account.
                 </p>
               </div>
             </div>
 
-            {pwError && (
-              <div
-                role="alert"
-                className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-              >
-                {pwError}
-              </div>
-            )}
-
-            {pwSuccess && (
-              <div
-                role="status"
-                className="mb-5 flex items-center gap-2 rounded-xl border border-accent/20 bg-accent-subtle/55 px-4 py-3 text-sm text-accent-hover"
-              >
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                {pwSuccess}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-text-secondary">
-                  Current Password
-                </span>
-                <span className={fieldShellClass}>
-                  <span className={fieldIconClass}>
-                    <LockKeyhole className="h-4 w-4" />
-                  </span>
-                  <input
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={currentPassword}
-                    onChange={(event) =>
-                      setCurrentPassword(event.target.value)
-                    }
-                    className={fieldInputClass}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword((visible) => !visible)}
-                    aria-label={
-                      showCurrentPassword
-                        ? "Hide current password"
-                        : "Show current password"
-                    }
-                    className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-bg-subtle hover:text-accent-hover"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </span>
-              </label>
-
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-medium text-text-secondary">
-                  New Password
-                </span>
-                <span className={fieldShellClass}>
-                  <span className={fieldIconClass}>
-                    <LockKeyhole className="h-4 w-4" />
-                  </span>
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(event) => setNewPassword(event.target.value)}
-                    className={fieldInputClass}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword((visible) => !visible)}
-                    aria-label={
-                      showNewPassword ? "Hide new password" : "Show new password"
-                    }
-                    className="mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-bg-subtle hover:text-accent-hover"
-                  >
-                    {showNewPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </button>
-                </span>
-                <span className="mt-1.5 block text-xs text-text-muted">
-                  At least 6 characters
-                </span>
-              </label>
-            </div>
-
-            <div className="mt-5 rounded-2xl bg-bg-subtle/65 p-4">
+            <div className="rounded-2xl bg-bg-subtle/65 p-4">
               <div className="flex gap-3">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
                 <p className="text-xs leading-5 text-text-muted">
-                  Use a unique password you don&apos;t use elsewhere.
+                  Change your password, manage connected Google accounts, and
+                  review your verified email addresses in one place.
                 </p>
               </div>
             </div>
 
             <button
-              type="submit"
-              disabled={pwSaving}
+              type="button"
+              onClick={() => openUserProfile()}
               className="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-text-primary px-5 py-3 text-sm font-medium text-bg transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent hover:text-on-accent hover:shadow-lg active:translate-y-0 disabled:cursor-wait disabled:opacity-60"
             >
-              <LockKeyhole
-                className={`h-4 w-4 ${pwSaving ? "animate-pulse" : ""}`}
-              />
-              {pwSaving ? "Updating..." : "Update Password"}
+              <ShieldCheck className="h-4 w-4" />
+              Manage Account &amp; Password
             </button>
-          </form>
+          </section>
         </div>
       </div>
     </main>

@@ -1,6 +1,33 @@
 import User from "../models/User.js";
 import Outfit from "../models/Outfit.js";
 
+const serializeUser = (user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    preferredGender: user.preferredGender,
+    preferredBudget: user.preferredBudget,
+});
+
+export const getCurrentProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        return res.status(200).json({ success: true, user: serializeUser(user) });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong while fetching the profile",
+            error: error.message,
+        });
+    }
+};
+
 export const updateProfile = async(req,res) => {
     try {
         
@@ -30,14 +57,7 @@ export const updateProfile = async(req,res) => {
         return res.status(200).json({
             success: true,
             message: "Profile Updated Successfully",
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                preferredGender: user.preferredGender,
-                preferredBudget: user.preferredBudget,
-            }
+            user: serializeUser(user),
         });
         
     } catch (error) {

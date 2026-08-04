@@ -6,20 +6,15 @@ const api = axios.create({
     baseURL: API_BASE_URL,
 })
 
-const TOKEN_KEY = "ootdify_user_token";
+let getAuthToken = async () => null;
 
-const getStoredToken = () => {
-    return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
-}
-
-const clearStoredToken = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(TOKEN_KEY);
-}
+const setAuthTokenGetter = (tokenGetter) => {
+    getAuthToken = tokenGetter || (async () => null);
+};
 
 api.interceptors.request.use(
-    (config) => {
-        const token = getStoredToken(TOKEN_KEY);
+    async (config) => {
+        const token = await getAuthToken();
         if(token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -28,15 +23,5 @@ api.interceptors.request.use(
     (error) => Promise.reject(error)
 )
 
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if(error.response?.status === 401) {
-            clearStoredToken();
-        }
-        return Promise.reject(error);
-    }
-)
-
 export default api;
-export {TOKEN_KEY, getStoredToken, clearStoredToken, API_BASE_URL};
+export {setAuthTokenGetter, API_BASE_URL};

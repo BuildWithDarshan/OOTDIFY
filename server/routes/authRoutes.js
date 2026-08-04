@@ -1,22 +1,21 @@
 import express from "express";
 
-import { registerUser, loginUser, logoutUser, getCurrentUser, changePassword } from "../controllers/authController.js";
+import { loginUser, logoutUser, getCurrentUser, changePassword } from "../controllers/authController.js";
 
 import { authMiddleware } from "../middleware/authMiddleware.js";
+import { adminMiddleware } from "../middleware/adminMiddleware.js";
 
-import { validateRegister, validateLogin, validateChangePassword } from "../validations/authValidation.js";
+import { validateLogin, validateChangePassword } from "../validations/authValidation.js";
 
 const authRouter = express.Router();
 
-authRouter.post('/register',validateRegister, registerUser);
-
 authRouter.post('/login', validateLogin, loginUser);
 
-authRouter.post('/logout', authMiddleware, logoutUser);
+authRouter.post('/logout', authMiddleware, adminMiddleware, logoutUser);
 
-authRouter.get('/me', authMiddleware, getCurrentUser);
+authRouter.get('/me', authMiddleware, adminMiddleware, getCurrentUser);
 
-authRouter.put('/change-password', validateChangePassword, authMiddleware, changePassword)
+authRouter.put('/change-password', validateChangePassword, authMiddleware, adminMiddleware, changePassword)
 
 export default authRouter;
 

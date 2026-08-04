@@ -1,7 +1,6 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import { AuthProvider } from './context/AuthContext.jsx';
 import MainLayout from './layouts/MainLayout.jsx';
 import Home from './pages/Home.jsx';
 import NotFound from './pages/NotFound.jsx'
@@ -25,14 +24,12 @@ function App() {
     <BrowserRouter>
 
     
-    <AuthProvider>
-
       <ScrollToTop/>
       <RouteMeta/>
       
       <Routes>
-        <Route path='/login' element={<Login/>}/>
-        <Route path='/register' element={<Register/>}/>
+        <Route path='/login/*' element={<Login/>}/>
+        <Route path='/register/*' element={<Register/>}/>
         
         <Route element={<MainLayout/>}>
           <Route path='/' element={<Home/>}/>
@@ -51,7 +48,6 @@ function App() {
 
         <Route path='*' element={<NotFound/>}/>
       </Routes>
-    </AuthProvider>
     </BrowserRouter>
   )
 }

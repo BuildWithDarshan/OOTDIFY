@@ -43,6 +43,10 @@ export const loginUser = async (req,res) => {
             return res.status(401).json({success: false, message: "Invalid email or password",}); 
         }
 
+        if(user.role !== "admin") {
+            return res.status(401).json({success: false, message: "Invalid admin credentials"});
+        }
+
         if(!user.isActive) {
             return res.status(403).json({success: false, message: "This account has been deactivated"});
         }

@@ -1,67 +1,78 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { loginUser, registerUser, getCurrentUser } from "../services/authService.js";
-import { TOKEN_KEY, getStoredToken, clearStoredToken } from "../services/api.js";
+import { useAuth as useClerkAuth, useUser } from "@clerk/react";
+import { getCurrentUser } from "../services/authService.js";
+import { setAuthTokenGetter } from "../services/api.js";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
+    const { isLoaded, isSignedIn, getToken, signOut } = useClerkAuth();
+    const { user: clerkUser } = useUser();
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [profileOwnerId, setProfileOwnerId] = useState(null);
 
     useEffect(() => {
-        const validateExistingToken = async () => {
-            const token = getStoredToken();
+        if (!isLoaded) return;
 
-            if (!token) {
-                setLoading(false);
-                return;
-            }
+        if (!isSignedIn) {
+            setAuthTokenGetter(null);
+            return;
+        }
 
+        setAuthTokenGetter(() => getToken());
+        if (!clerkUser?.id) return;
+
+        const currentClerkUserId = clerkUser.id;
+        let cancelled = false;
+
+        const loadProfile = async () => {
             try {
                 const data = await getCurrentUser();
-                setUser(data.user);
-            } catch {
-                clearStoredToken();
-                setUser(null);
-            } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setUser(data.user);
+                    setProfileOwnerId(currentClerkUserId);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setUser(null);
+                    setProfileOwnerId(currentClerkUserId);
+                    console.error("Unable to load the OOTDIFY profile", error);
+                }
             }
         };
 
-        validateExistingToken();
-    }, []);
+        loadProfile();
 
-   
-    const login = async (email, password, rememberMe = true) => {
-        const data = await loginUser({ email, password });
-        const storage = rememberMe ? localStorage : sessionStorage;
-        storage.setItem(TOKEN_KEY, data.token);
-        setUser(data.user);
-        return data.user;
-    };
+        return () => {
+            cancelled = true;
+        };
+    }, [getToken, isLoaded, isSignedIn, clerkUser?.id]);
 
-    const register = async (name, email, password) => {
-        const data = await registerUser({ name, email, password });
-        localStorage.setItem(TOKEN_KEY, data.token);
-        setUser(data.user);
-        return data.user;
-    };
-
-    const logout = () => {
-        clearStoredToken();
-        setUser(null);
+    const logout = async () => {
+        try {
+            await signOut({ redirectUrl: "/" });
+        } finally {
+            setUser(null);
+            setProfileOwnerId(null);
+            setAuthTokenGetter(null);
+        }
     };
 
     const updateUserInfo = (updatedFields) => {
-        setUser((prev) => ({ ...prev, ...updatedFields }));
+        setUser((previousUser) => previousUser
+            ? { ...previousUser, ...updatedFields }
+            : previousUser,
+        );
     };
+
+    const loading = !isLoaded
+        || (Boolean(isSignedIn) && profileOwnerId !== clerkUser?.id);
 
     const value = {
         user,
-        isAuthenticated: !!user,
+        clerkUser,
+        isAuthenticated: Boolean(isLoaded && isSignedIn && user),
         loading,
-        login,
-        register,
         logout,
         updateUserInfo,
     };
@@ -69,6 +80,8 @@ export const AuthProvider = ({ children }) => {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Auth hooks intentionally share this module with their provider.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (!context) {
