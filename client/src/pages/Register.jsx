@@ -1,4 +1,5 @@
 import { SignUp } from "@clerk/react";
+import logo from "../assets/logos/ootdify-logo-trimmed.png";
 
 const Register = () => (
   <main className="flex min-h-screen items-center justify-center bg-bg px-4 py-14 font-body">
@@ -6,9 +7,11 @@ const Register = () => (
       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-accent-hover">
         Join the wardrobe
       </p>
-      <h1 className="mb-8 font-display text-5xl italic text-text-primary">
-        OOTDIFY
-      </h1>
+      <img
+        src={logo}
+        alt="OOTDIFY"
+        className="mb-8 h-auto w-[8.75rem] object-contain sm:w-[10rem]"
+      />
       <SignUp
         routing="path"
         path="/register"
