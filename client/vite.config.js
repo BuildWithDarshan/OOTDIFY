@@ -5,4 +5,14 @@ import tailwindcss from "@tailwindcss/vite";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(),tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) =>
+          assetInfo.names?.includes('ootdify.svg')
+            ? 'favicon.svg'
+            : 'assets/[name]-[hash][extname]',
+      },
+    },
+  },
 })
