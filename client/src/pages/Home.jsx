@@ -19,8 +19,6 @@ const Home = () => {
       dividerLeft="CURATED"
       dividerCenter="FOR EVERY OCCASION"
       dividerRight="STYLED"
-      ctaLabel="EXPLORE LOOKS"
-      ctaHref="#ootd"
       fullHeight
       />
       <OOTDBanner/>

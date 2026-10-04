@@ -51,15 +51,15 @@ const CommunityActionDock = () => {
     return (
         <div
             ref={dockRef}
-            className="fixed right-[5px] top-1/2 z-[60] -translate-y-1/2"
+            className="fixed bottom-5 right-[5px] z-[60]"
         >
             <div
                 id="community-action-menu"
                 aria-hidden={!open}
-                className={`absolute right-full mr-3 flex min-w-max -translate-y-1/2 flex-col items-end gap-2 transition-all duration-200 ${
+                className={`absolute bottom-0 right-full mr-3 flex min-w-max flex-col items-end gap-2 transition-all duration-200 ${
                     open
-                        ? "top-1/2 translate-x-0 scale-100 opacity-100"
-                        : "pointer-events-none top-1/2 translate-x-2 scale-95 opacity-0"
+                        ? "translate-x-0 scale-100 opacity-100"
+                        : "pointer-events-none translate-x-2 scale-95 opacity-0"
                 }`}
             >
                 {actions.map(({ to, label, icon: Icon, primary }) => (

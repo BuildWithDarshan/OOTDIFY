@@ -420,7 +420,7 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
             to={profileLink}
             aria-label={isAuthenticated ? `${user?.name || "Your"} creator profile` : "Log in to OOTDIFY"}
             title={isAuthenticated ? user?.name || "Your profile" : "Log in"}
-            className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-border bg-bg shadow-sm transition hover:border-accent lg:hidden"
+            className="hidden"
         >
             {user?.profilePicture?.url ? (
                 <img src={user.profilePicture.url} alt="" className="h-full w-full object-cover" />

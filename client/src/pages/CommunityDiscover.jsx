@@ -484,7 +484,7 @@ const CommunityDiscover = () => {
                         : "Log in to OOTDIFY"
                 }
                 title={isAuthenticated ? user?.name || "Your profile" : "Log in"}
-                className="fixed right-3 top-3 z-40 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-border bg-bg shadow-sm transition hover:border-accent lg:hidden"
+                className="hidden"
             >
                 {user?.profilePicture?.url ? (
                     <img
