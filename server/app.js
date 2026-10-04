@@ -16,6 +16,9 @@ import userRoutes from "./routes/userRoutes.js";
 import newsLetterRoutes from "./routes/newsLetterRoutes.js"
 import { notFound, errorHandler } from "./middleware/errorMiddleware.js";
 import connectDB from "./config/db.js";
+import communityOutfitRouter from "./routes/communityOutfitRoutes.js";
+import communityInteractionRouter from "./routes/communityInteractionRoutes.js";
+import communityReportRouter from "./routes/communityReportRoutes.js";
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || "")
@@ -83,6 +86,12 @@ app.use('/api/upload',uploadRoutes);
 app.use('/api/redirect', redirectRoutes);
 
 app.use('/api/newsletter', newsLetterRoutes);
+
+app.use('/api/community-outfits', communityInteractionRouter);
+
+app.use('/api/community-outfits', communityOutfitRouter);
+
+app.use('/api/community-reports', communityReportRouter);
 
 app.use(notFound);
 app.use(errorHandler);

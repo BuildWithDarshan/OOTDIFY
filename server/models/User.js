@@ -8,6 +8,18 @@ const userSchema = new mongoose.Schema(
             required:[true,'Name is required'], 
             trim:true
         },
+        profilePicture: {
+            url: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+            publicId: {
+                type: String,
+                default: "",
+                trim: true,
+            },
+        },
         email:{
             type:String,
             required:[true,'Email is required'],

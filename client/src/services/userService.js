@@ -11,3 +11,11 @@ export const removeFavourite = (outfitId) =>
 
 export const updateProfile = (payload) =>
     api.put("/users/profile",payload).then((res) => res.data);
+
+export const uploadProfilePicture = (image) => {
+    const formData = new FormData();
+    formData.append("image", image);
+    return api
+        .post("/users/profile/picture", formData)
+        .then((res) => res.data);
+};

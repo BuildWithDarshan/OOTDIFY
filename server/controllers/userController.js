@@ -1,5 +1,9 @@
 import User from "../models/User.js";
 import Outfit from "../models/Outfit.js";
+import {
+    deleteImageCloudinary,
+    uploadImageToCloudinary,
+} from "../services/cloudinaryService.js";
 
 const serializeUser = (user) => ({
     id: user._id,
@@ -8,6 +12,7 @@ const serializeUser = (user) => ({
     role: user.role,
     preferredGender: user.preferredGender,
     preferredBudget: user.preferredBudget,
+    profilePicture: user.profilePicture,
 });
 
 export const getCurrentProfile = async (req, res) => {
@@ -68,6 +73,56 @@ export const updateProfile = async(req,res) => {
         });
     }
 }
+
+export const uploadProfilePicture = async (req, res) => {
+    let uploadedPicture;
+
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "A profile picture is required",
+            });
+        }
+
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        uploadedPicture = await uploadImageToCloudinary(
+            req.file.path,
+            "ootdify/community-profiles",
+        );
+
+        const previousPublicId = user.profilePicture?.publicId;
+        user.profilePicture = uploadedPicture;
+        await user.save();
+
+        if (previousPublicId) {
+            await deleteImageCloudinary(previousPublicId);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile picture updated successfully",
+            user: serializeUser(user),
+        });
+    } catch (error) {
+        if (uploadedPicture?.publicId) {
+            await deleteImageCloudinary(uploadedPicture.publicId);
+        }
+        console.error("Something went wrong while updating the profile picture", error);
+        return res.status(500).json({
+            success: false,
+            message: "Something went wrong while updating the profile picture",
+        });
+    }
+};
 
 export const getFavourites = async(req,res) => {
     try {

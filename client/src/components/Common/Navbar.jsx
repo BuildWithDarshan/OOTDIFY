@@ -13,6 +13,7 @@ const navLinks = [
     { to: '/trends', label: "Trends" },
     { to: '/style-tips', label: "Style Tips" },
     { to: '/wardrobe-essentials', label: "Wardrobe" },
+    { to: '/community', label: "Community" },
 ];
 
 const Navbar = () => {
@@ -22,7 +23,7 @@ const Navbar = () => {
     return (
         <header className='fixed top-3 left-3 sm:top-4 sm:left-4 z-50'>
             {/* Navbar Header / branding */}
-            <div className='w-[min(85vw,16rem)] bg-bg border border-border rounded-2xl shadow-sm flex items-center gap-4 sm:gap-6 pl-4 pr-2 py-2 sm:pl-5 sm:pr-3 sm:py-2 justify-between'>
+            <div className='w-[min(95vw,20rem)] bg-bg border border-border rounded-2xl shadow-sm flex items-center gap-2 sm:gap-3 pl-3 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-2 justify-between'>
                 <Link
                     to='/'
                     onClick={() => setOpen(false)}

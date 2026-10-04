@@ -1,19 +1,25 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useClerk } from "@clerk/react";
 import {
   ArrowRight,
+  Camera,
   CheckCircle2,
   Heart,
+  LoaderCircle,
   Mail,
   Save,
   ShieldCheck,
   User,
+  UserRound,
   Users,
   WalletCards,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { updateProfile } from "../services/userService.js";
+import {
+  updateProfile,
+  uploadProfilePicture,
+} from "../services/userService.js";
 
 const fieldShellClass =
   "flex w-full min-w-0 items-center overflow-hidden rounded-xl border border-border bg-bg transition-all duration-300 hover:border-border-strong focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10";
@@ -36,6 +42,53 @@ const ProfileContent = ({ user, updateUserInfo }) => {
   const [nameError, setNameError] = useState("");
   const [nameSuccess, setNameSuccess] = useState("");
   const [nameSaving, setNameSaving] = useState(false);
+  const [picturePreview, setPicturePreview] = useState("");
+  const [pictureError, setPictureError] = useState("");
+  const [pictureUploading, setPictureUploading] = useState(false);
+  const pictureInputRef = useRef(null);
+
+  useEffect(
+    () => () => {
+      if (picturePreview) URL.revokeObjectURL(picturePreview);
+    },
+    [picturePreview],
+  );
+
+  const handlePictureChange = async (event) => {
+    const image = event.target.files?.[0];
+    event.target.value = "";
+    if (!image) return;
+
+    setPictureError("");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(image.type)) {
+      setPictureError("Choose a JPG, PNG, or WEBP image.");
+      return;
+    }
+    if (image.size > 4 * 1024 * 1024) {
+      setPictureError("The profile picture must be 4 MB or smaller.");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(image);
+    setPicturePreview(previewUrl);
+    setPictureUploading(true);
+
+    try {
+      const data = await uploadProfilePicture(image);
+      updateUserInfo({ profilePicture: data.user.profilePicture });
+      URL.revokeObjectURL(previewUrl);
+      setPicturePreview("");
+    } catch (error) {
+      URL.revokeObjectURL(previewUrl);
+      setPicturePreview("");
+      setPictureError(
+        error.response?.data?.message ||
+          "The profile picture could not be uploaded. Please try again.",
+      );
+    } finally {
+      setPictureUploading(false);
+    }
+  };
 
   const handleProfileSubmit = async (event) => {
     event.preventDefault();
@@ -135,6 +188,43 @@ const ProfileContent = ({ user, updateUserInfo }) => {
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 md:px-10">
         <header className="profile-header mt-15 mb-8 overflow-hidden rounded-[1.75rem] border border-border/80 bg-bg shadow-[0_18px_55px_rgba(8,28,21,0.08)] sm:mb-10">
           <div className="flex flex-col items-center gap-5 p-6 text-center sm:flex-row sm:p-8 sm:text-left">
+            <div className="relative h-20 w-20 shrink-0 sm:h-24 sm:w-24">
+              {picturePreview || user?.profilePicture?.url ? (
+                <img
+                  src={picturePreview || user.profilePicture.url}
+                  alt={`${user?.name || "Your"} profile`}
+                  className="h-full w-full rounded-full border-4 border-accent-subtle object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-full border-4 border-accent-subtle bg-bg-subtle font-display text-3xl uppercase text-accent-hover">
+                  {(user?.name || "U").slice(0, 1)}
+                </div>
+              )}
+              <input
+                ref={pictureInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePictureChange}
+                className="sr-only"
+                aria-label="Choose a profile picture"
+              />
+              <button
+                type="button"
+                onClick={() => pictureInputRef.current?.click()}
+                disabled={pictureUploading}
+                aria-label="Upload profile picture"
+                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-bg bg-accent text-white shadow transition hover:bg-accent-hover disabled:cursor-wait disabled:opacity-70"
+              >
+                {pictureUploading ? (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="h-4 w-4 animate-spin"
+                  />
+                ) : (
+                  <Camera aria-hidden="true" className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
                 Personal account
@@ -145,16 +235,36 @@ const ProfileContent = ({ user, updateUserInfo }) => {
               <p className="mt-2 text-sm leading-6 text-text-secondary">
                 Manage your details, style preferences, and account security.
               </p>
+              {pictureError && (
+                <p role="alert" className="mt-2 text-xs text-red-700">
+                  {pictureError}
+                </p>
+              )}
+              {!pictureError && (
+                <p role="status" className="invisible mt-2 text-xs text-text-muted">
+                  Upload a JPG, PNG, or WEBP image up to 4 MB.
+                </p>
+              )}
             </div>
 
-            <Link
-              to="/favourites"
-              className="group inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-bg-subtle px-4 py-2.5 text-xs font-medium text-text-secondary transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:text-accent-hover hover:shadow-md sm:w-auto"
-            >
-              <Heart className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
-              Favourites
-              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
-            </Link>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+              <Link
+                to="/favourites"
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full border border-border bg-bg-subtle px-4 py-2.5 text-xs font-medium text-text-secondary transition-all duration-300 hover:-translate-y-0.5 hover:border-accent hover:text-accent-hover hover:shadow-md sm:w-auto"
+              >
+                <Heart className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+                Favourites
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                to={`/community/creator/${user?.id}`}
+                className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md sm:w-auto"
+              >
+                <UserRound className="h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
+                Creator Profile
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
         </header>
 

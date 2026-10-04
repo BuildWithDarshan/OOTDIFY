@@ -17,6 +17,7 @@ import ManageStyleTips from "./pages/ManageStyleTips.jsx";
 import AddStyleTip from "./pages/AddStyleTip.jsx";
 import Users from "./pages/Users.jsx";
 import Settings from "./pages/Settings.jsx";
+import ManageCommunityReports from "./pages/ManageCommunityReports.jsx";
 
 // Wraps any route that requires a logged-in admin. Shows nothing (or a
 // loader) while the token is still being validated on first load, to avoid
@@ -67,6 +68,7 @@ function App() {
                     <Route path="/style-tips/add" element={<AddStyleTip/>}/>
                     <Route path="/users" element={<Users/>}/>
                     <Route path='/settings' element={<Settings/>}/>
+                    <Route path="/community-reports" element={<ManageCommunityReports />} />
                 </Route>
 
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />

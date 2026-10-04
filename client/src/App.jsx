@@ -15,8 +15,15 @@ import WardrobeEssentials from './pages/WardrobeEssentials.jsx';
 import Favourites from './pages/Favourites.jsx';
 import Profile from './pages/Profile.jsx';
 import About from './pages/About.jsx';
+import CommunityDiscover from './pages/CommunityDiscover.jsx';
+import CreateCommunityOutfit from './pages/CreateCommunityOutfit.jsx';
+import CommunityOutfitDetails from './pages/CommunityOutfitDetails.jsx';
+import CommunityCreatorProfile from './pages/CommunityCreatorProfile.jsx';
+import CommunitySavedOutfits from './pages/CommunitySavedOutfits.jsx';
+import CommunityActionDock from './components/Common/CommunityActionDock.jsx';
 import ScrollToTop from './components/Common/ScrollToTop.jsx';
 import { RouteMeta } from './components/Common/PageMeta.jsx';
+
 
 
 function App() {
@@ -26,6 +33,7 @@ function App() {
     
       <ScrollToTop/>
       <RouteMeta/>
+      <CommunityActionDock />
       
       <Routes>
         <Route path='/login/*' element={<Login/>}/>
@@ -44,6 +52,12 @@ function App() {
           <Route path='/favourites' element={<Favourites/>}/>
           <Route path='/profile' element={<Profile/>}/>
           <Route path='/about' element={<About/>}/>
+          <Route path='/community' element={<CommunityDiscover/>}/>
+          <Route path='/community/create' element={<CreateCommunityOutfit/>}/>
+          <Route path='/community/saved' element={<CommunitySavedOutfits/>}/>
+          <Route path='/community/creator/:userId' element={<CommunityCreatorProfile/>}/>
+          <Route path='/community/:id/edit' element={<CreateCommunityOutfit/>}/>
+          <Route path='/community/:id' element={<CommunityOutfitDetails/>}/>
         </Route>
 
         <Route path='*' element={<NotFound/>}/>

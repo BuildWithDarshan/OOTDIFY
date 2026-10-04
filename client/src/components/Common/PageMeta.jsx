@@ -47,6 +47,21 @@ const pageMetadata = {
       "View and manage the OOTDIFY outfits you have saved for later.",
     noIndex: true,
   },
+  "/community": {
+    title: "Community Outfit Inspiration | OOTDIFY",
+    description:
+      "Discover outfit inspiration shared by the OOTDIFY community.",
+  },
+  "/community/create": {
+    title: "Share Your Outfit | OOTDIFY Community",
+    description: "Share your outfit inspiration with the OOTDIFY community.",
+    noIndex: true,
+  },
+  "/community/saved": {
+    title: "Saved Community Outfits | OOTDIFY",
+    description: "View your saved community outfit inspiration.",
+    noIndex: true,
+  },
   "/profile": {
     title: "Your Profile | OOTDIFY",
     description: "Manage your OOTDIFY profile and style preferences.",
@@ -111,6 +126,9 @@ export const RouteMeta = () => {
   // Detail pages provide metadata from their fetched content.
   if (
     pathname.startsWith("/outfit/") ||
+    (pathname.startsWith("/community/") &&
+      pathname !== "/community/create" &&
+      pathname !== "/community/saved") ||
     pathname.startsWith("/trends/") ||
     pathname.startsWith("/style-tips/")
   ) {

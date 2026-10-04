@@ -11,6 +11,7 @@ const navItems = [
     { to: "/occasions", label: "Occasions" },
     { to: "/outfit-types", label: "Outfit Types" },
     { to: "/users", label: "Users" },
+    { to: "/community-reports", label: "Community Reports" },
     { to: "/settings", label: "Settings"},
 ];
 
