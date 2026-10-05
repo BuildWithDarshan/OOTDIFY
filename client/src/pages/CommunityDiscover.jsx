@@ -194,7 +194,7 @@ const CommunityCard = ({ outfit }) => {
                     saveError ||
                     (saved ? "Remove from saved outfits" : "Save outfit")
                 }
-                className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-md backdrop-blur transition-[color,background-color,transform] duration-150 ease-out hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
+                className={`absolute right-2.5 top-2.5 z-10 hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-md backdrop-blur transition-[color,background-color,transform] duration-150 ease-out hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
                     saved
                         ? "text-accent-hover sm:opacity-100"
                         : "text-text-primary"

@@ -265,7 +265,7 @@ const RelatedCommunityCard = ({ outfit }) => {
                 aria-label={saved ? "Remove from saved outfits" : "Save outfit"}
                 aria-pressed={saved}
                 title={saveError || (saved ? "Remove from saved outfits" : "Save outfit")}
-                className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
+                className={`absolute right-2.5 top-2.5 z-10 hidden h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
                     saved ? "text-accent-hover sm:opacity-100" : ""
                 }`}
             >
@@ -298,7 +298,7 @@ const RelatedCommunityCardSkeleton = () => (
             </div>
         </div>
         <div className="absolute left-2.5 top-2.5 hidden h-9 w-9 animate-pulse rounded-full bg-white/70 sm:block sm:opacity-0 sm:group-hover:opacity-100" />
-        <div className="absolute right-2.5 top-2.5 h-9 w-9 animate-pulse rounded-full bg-white/70 sm:opacity-0 sm:group-hover:opacity-100" />
+        <div className="absolute right-2.5 top-2.5 hidden h-9 w-9 animate-pulse rounded-full bg-white/70 sm:block sm:opacity-0 sm:group-hover:opacity-100" />
     </div>
 );
 
@@ -1353,7 +1353,7 @@ const CommunityOutfitDetails = () => {
                                 </span>
                             </div>
 
-                            <h1 className="font-display not-italic text-2xl font-medium leading-tight text-text-primary sm:text-3xl">
+                            <h1 className="font-display not-italic text-xl font-normal leading-tight text-text-primary sm:text-3xl sm:font-medium">
                                 {outfit.title}
                             </h1>
 
