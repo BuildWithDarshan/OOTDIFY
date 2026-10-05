@@ -30,12 +30,19 @@ const parsePagination = (query) => {
     };
 };
 
-const getVisibleOutfit = async (outfitId) =>
-    CommunityOutfit.findOne({ _id: outfitId, isVisible: true });
+const getVisibleOutfit = async (outfitId, userId) =>
+    CommunityOutfit.findOne({
+        _id: outfitId,
+        isVisible: true,
+        $or: [
+            { visibility: { $ne: "private" } },
+            ...(userId ? [{ user: userId, visibility: "private" }] : []),
+        ],
+    });
 
 export const getCommunityInteractionState = async (req, res, next) => {
     try {
-        const outfit = await getVisibleOutfit(req.params.outfitId);
+        const outfit = await getVisibleOutfit(req.params.outfitId, req.user.id);
 
         if (!outfit) {
             return res.status(404).json({
@@ -60,6 +67,74 @@ export const getCommunityInteractionState = async (req, res, next) => {
     }
 };
 
+export const getCommunityInteractionStates = async (req, res, next) => {
+    try {
+        const { outfitIds } = req.body;
+
+        if (
+            !Array.isArray(outfitIds) ||
+            outfitIds.length > MAX_PAGE_SIZE ||
+            outfitIds.some(
+                (id) =>
+                    typeof id !== "string" ||
+                    !mongoose.Types.ObjectId.isValid(id),
+            )
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: `outfitIds must be an array of at most ${MAX_PAGE_SIZE} valid outfit IDs`,
+            });
+        }
+
+        const uniqueIds = [...new Set(outfitIds.map((id) => id.toLowerCase()))];
+        const accessibleOutfits = await CommunityOutfit.find({
+            _id: { $in: uniqueIds },
+            isVisible: true,
+            $or: [
+                { visibility: { $ne: "private" } },
+                { user: req.user.id, visibility: "private" },
+            ],
+        })
+            .select("_id")
+            .lean();
+        const accessibleIds = accessibleOutfits.map((outfit) =>
+            outfit._id.toString(),
+        );
+        const [likes, saves] = await Promise.all([
+            CommunityLike.find({
+                user: req.user.id,
+                outfit: { $in: accessibleIds },
+            })
+                .select("outfit")
+                .lean(),
+            CommunitySave.find({
+                user: req.user.id,
+                outfit: { $in: accessibleIds },
+            })
+                .select("outfit")
+                .lean(),
+        ]);
+        const likedIds = new Set(likes.map((like) => like.outfit.toString()));
+        const savedIds = new Set(saves.map((save) => save.outfit.toString()));
+
+        return res.status(200).json({
+            success: true,
+            states: Object.fromEntries(
+                accessibleIds.map((id) => [
+                    id,
+                    {
+                        liked: likedIds.has(id),
+                        saved: savedIds.has(id),
+                    },
+                ]),
+            ),
+        });
+    } catch (error) {
+        if (error.statusCode) res.status(error.statusCode);
+        next(error);
+    }
+};
+
 const changeCount = (outfit, field, amount) => {
     const update = amount > 0
         ? { $inc: { [field]: amount } }
@@ -74,7 +149,7 @@ const changeCount = (outfit, field, amount) => {
 
 export const toggleCommunityLike = async (req, res, next) => {
     try {
-        const outfit = await getVisibleOutfit(req.params.outfitId);
+        const outfit = await getVisibleOutfit(req.params.outfitId, req.user.id);
 
         if (!outfit) {
             return res.status(404).json({
@@ -129,7 +204,7 @@ export const toggleCommunityLike = async (req, res, next) => {
 
 export const toggleCommunitySave = async (req, res, next) => {
     try {
-        const outfit = await getVisibleOutfit(req.params.outfitId);
+        const outfit = await getVisibleOutfit(req.params.outfitId, req.user.id);
 
         if (!outfit) {
             return res.status(404).json({
@@ -185,7 +260,7 @@ export const toggleCommunitySave = async (req, res, next) => {
 export const getCommunityComments = async (req, res, next) => {
     try {
         const { page, limit, skip } = parsePagination(req.query);
-        const outfit = await getVisibleOutfit(req.params.outfitId);
+        const outfit = await getVisibleOutfit(req.params.outfitId, req.user?.id);
 
         if (!outfit) {
             return res.status(404).json({
@@ -240,7 +315,7 @@ export const addCommunityComment = async (req, res, next) => {
             });
         }
 
-        const outfit = await getVisibleOutfit(req.params.outfitId);
+        const outfit = await getVisibleOutfit(req.params.outfitId, req.user.id);
 
         if (!outfit) {
             return res.status(404).json({
@@ -294,6 +369,14 @@ export const deleteCommunityComment = async (req, res, next) => {
             });
         }
 
+        const outfit = await getVisibleOutfit(comment.outfit, req.user.id);
+        if (!outfit) {
+            return res.status(404).json({
+                success: false,
+                message: "Community outfit not found",
+            });
+        }
+
         if (comment.user.toString() !== req.user.id) {
             return res.status(403).json({
                 success: false,
@@ -328,7 +411,13 @@ export const getSavedCommunityOutfits = async (req, res, next) => {
             .limit(limit)
             .populate({
                 path: "outfit",
-                match: { isVisible: true },
+                match: {
+                    isVisible: true,
+                    $or: [
+                        { visibility: { $ne: "private" } },
+                        { user: req.user.id, visibility: "private" },
+                    ],
+                },
                 populate: [
                     { path: "user", select: "name profilePicture" },
                     { path: "outfitType", select: "name slug" },

@@ -85,3 +85,27 @@ export const clerkAuthMiddleware = async (req, res, next) => {
         next(error);
     }
 };
+
+export const optionalClerkAuthMiddleware = async (req, res, next) => {
+    try {
+        const { userId } = getAuth(req);
+        if (!userId) return next();
+
+        const user = await User.findOne({
+            clerkUserId: userId,
+            isActive: true,
+        }).select("_id role clerkUserId");
+
+        if (user) {
+            req.user = {
+                id: user._id.toString(),
+                role: user.role,
+                clerkUserId: userId,
+            };
+        }
+
+        return next();
+    } catch (error) {
+        return next(error);
+    }
+};

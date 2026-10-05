@@ -65,6 +65,7 @@ export const createCommunityReport = async (req, res, next) => {
         const outfit = await CommunityOutfit.findOne({
             _id: outfitId,
             isVisible: true,
+            visibility: { $ne: "private" },
         }).select("_id user");
 
         if (!outfit) {

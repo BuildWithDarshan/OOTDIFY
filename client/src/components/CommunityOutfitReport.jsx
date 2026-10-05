@@ -13,7 +13,13 @@ const REPORT_REASONS = [
     { value: "other", label: "Other" },
 ];
 
-const CommunityOutfitReport = ({ outfit, compact = false, iconOnly = false }) => {
+const CommunityOutfitReport = ({
+    outfit,
+    compact = false,
+    iconOnly = false,
+    menuItem = false,
+    onOpen,
+}) => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
@@ -43,6 +49,7 @@ const CommunityOutfitReport = ({ outfit, compact = false, iconOnly = false }) =>
             return;
         }
         setError("");
+        onOpen?.();
         setIsOpen(true);
     };
 
@@ -87,7 +94,9 @@ const CommunityOutfitReport = ({ outfit, compact = false, iconOnly = false }) =>
                 aria-label={`Report ${outfit.title}`}
                 title="Report this outfit"
                 className={
-                    compact
+                    menuItem
+                        ? "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-primary transition hover:bg-bg-subtle hover:text-red-700"
+                        : compact
                         ? "absolute left-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white hover:text-red-700 sm:left-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                         : iconOnly
                           ? "inline-flex h-9 w-9 items-center justify-center rounded-full text-text-muted transition hover:bg-bg-subtle hover:text-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -95,7 +104,9 @@ const CommunityOutfitReport = ({ outfit, compact = false, iconOnly = false }) =>
                 }
             >
                 <ShieldAlert aria-hidden="true" className="h-4 w-4" />
-                {!compact && !iconOnly && "Report this outfit"}
+                {menuItem
+                    ? "Report this outfit"
+                    : !compact && !iconOnly && "Report this outfit"}
             </button>
 
             {isOpen &&

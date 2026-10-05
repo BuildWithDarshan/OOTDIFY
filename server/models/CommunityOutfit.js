@@ -74,6 +74,12 @@ const communityOutfitSchema = new mongoose.Schema({
         ],
         default: [],
     },
+    visibility: {
+        type: String,
+        enum: ["public", "private"],
+        default: "public",
+        required: true,
+    },
     productLinks : {
         topwear: {...optionalUrlField},
         bottomwear: {...optionalUrlField},
@@ -102,6 +108,7 @@ const communityOutfitSchema = new mongoose.Schema({
 
 communityOutfitSchema.index({isVisible: 1, createdAt: -1});
 communityOutfitSchema.index({isVisible: 1, gender: 1, createdAt: -1});
+communityOutfitSchema.index({user: 1, visibility: 1, isVisible: 1, createdAt: -1});
 communityOutfitSchema.index({ outfitType: 1, occasion: 1 });
 communityOutfitSchema.index({ tags: 1 });
 

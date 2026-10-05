@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Select from "react-select";
 import {
     ArrowLeft,
+    Eye,
+    EyeOff,
     ImagePlus,
     Link2,
     LoaderCircle,
@@ -11,6 +13,7 @@ import {
     X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import EmojiPickerButton from "../components/Common/EmojiPickerButton.jsx";
 import {
     createCommunityOutfit,
     getCommunityOutfitById,
@@ -20,6 +23,7 @@ import { getOccasions, getOutfitTypes } from "../services/taxonomyService.js";
 
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const HEIC_IMAGE_TYPES = ["image/heic", "image/heif"];
 const MAX_TAGS = 10;
 
 const selectStyles = {
@@ -34,14 +38,14 @@ const selectStyles = {
         ":hover": { borderColor: "#40916c" },
     }),
     valueContainer: (base) => ({ ...base, padding: "0 14px" }),
-    placeholder: (base) => ({ ...base, color: "#708078", fontSize: 13 }),
+    placeholder: (base) => ({ ...base, color: "#708078", fontSize: 14 }),
     singleValue: (base) => ({
         ...base,
         color: "#081c15",
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: 500,
     }),
-    input: (base) => ({ ...base, color: "#081c15", fontSize: 13 }),
+    input: (base) => ({ ...base, color: "#081c15", fontSize: 14 }),
     dropdownIndicator: (base) => ({
         ...base,
         color: "#40916c",
@@ -73,7 +77,7 @@ const selectStyles = {
               : "transparent",
         color: state.isSelected ? "#ffffff" : "#173328",
         cursor: "pointer",
-        fontSize: 13,
+        fontSize: 14,
     }),
     noOptionsMessage: (base) => ({ ...base, color: "#718078", fontSize: 12 }),
 };
@@ -86,10 +90,10 @@ const selectProps = {
 };
 
 const inputClassName =
-    "min-h-12 w-full rounded-xl border border-border bg-bg px-4 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted/80 hover:border-border-strong focus:border-accent focus:ring-4 focus:ring-accent/10";
+    "min-h-12 w-full rounded-xl border border-border bg-bg px-4 text-base text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted/80 hover:border-border-strong focus:border-accent focus:ring-4 focus:ring-accent/10";
 
 const labelClassName =
-    "mb-1.5 block text-xs font-medium text-text-secondary";
+    "mb-1.5 block text-sm font-semibold text-text-secondary";
 
 const PRODUCT_CATEGORIES = [
     { key: "topwear", label: "Topwear", placeholder: "https://example.com/topwear" },
@@ -111,11 +115,14 @@ const CreateCommunityOutfit = () => {
     const [outfitLoading, setOutfitLoading] = useState(isEditMode);
     const [outfitLoadError, setOutfitLoadError] = useState("");
     const [imageError, setImageError] = useState("");
+    const [imageProcessing, setImageProcessing] = useState(false);
     const [title, setTitle] = useState("");
+    const titleInputRef = useRef(null);
     const [gender, setGender] = useState(null);
     const [category, setCategory] = useState(null);
     const [occasion, setOccasion] = useState(null);
     const [description, setDescription] = useState("");
+    const [visibility, setVisibility] = useState("public");
     const [tagInput, setTagInput] = useState("");
     const [tags, setTags] = useState([]);
     const [productLinks, setProductLinks] = useState({
@@ -187,6 +194,7 @@ const CreateCommunityOutfit = () => {
                 setExistingImage(outfit.image?.url || "");
                 setTitle(outfit.title || "");
                 setDescription(outfit.description || "");
+                setVisibility(outfit.visibility || "public");
                 setGender(
                     outfit.gender
                         ? {
@@ -246,15 +254,55 @@ const CreateCommunityOutfit = () => {
         label: item.name,
     }));
 
-    const handleImageChange = (event) => {
+    const handleImageChange = async (event) => {
         const selectedImage = event.target.files?.[0];
         event.target.value = "";
         setImageError("");
 
         if (!selectedImage) return;
 
+        const isHeicImage =
+            HEIC_IMAGE_TYPES.includes(selectedImage.type.toLowerCase()) ||
+            /\.(heic|heif)$/i.test(selectedImage.name);
+
+        if (isHeicImage) {
+            setImageProcessing(true);
+            try {
+                const { default: heic2any } = await import("heic2any");
+                const jpegBlob = await heic2any({
+                    blob: selectedImage,
+                    toType: "image/jpeg",
+                    quality: 0.9,
+                });
+                const convertedBlob = Array.isArray(jpegBlob)
+                    ? jpegBlob[0]
+                    : jpegBlob;
+                const jpegFile = new File(
+                    [convertedBlob],
+                    selectedImage.name.replace(/\.(heic|heif)$/i, "") +
+                        ".jpg",
+                    { type: "image/jpeg", lastModified: Date.now() },
+                );
+
+                if (jpegFile.size > MAX_IMAGE_SIZE) {
+                    setImageError("The converted image must be 4 MB or smaller.");
+                    return;
+                }
+
+                setImage(jpegFile);
+            } catch (error) {
+                setImageError(
+                    error.message ||
+                        "This HEIC photo could not be converted. Try saving it as JPG and upload again.",
+                );
+            } finally {
+                setImageProcessing(false);
+            }
+            return;
+        }
+
         if (!ALLOWED_IMAGE_TYPES.includes(selectedImage.type)) {
-            setImageError("Choose a JPG, PNG, or WEBP image.");
+            setImageError("Choose a JPG, PNG, WEBP, HEIC, or HEIF image.");
             return;
         }
 
@@ -309,6 +357,11 @@ const CreateCommunityOutfit = () => {
         event.preventDefault();
         setSubmitError("");
 
+        if (imageProcessing) {
+            setSubmitError("Wait for the HEIC photo to finish converting.");
+            return;
+        }
+
         if (!image && !isEditMode) {
             setImageError("Upload an outfit photo to continue.");
             return;
@@ -348,6 +401,7 @@ const CreateCommunityOutfit = () => {
                 outfitType: category.value,
                 occasion: occasion.value,
                 description: description.trim(),
+                visibility,
                 tags,
                 productLinks: Object.fromEntries(
                     Object.entries(productLinks).map(([key, value]) => [
@@ -498,7 +552,9 @@ const CreateCommunityOutfit = () => {
                     <p className="text-xs font-medium text-text-secondary">
                         {isEditMode
                             ? "Your changes will appear on your community outfit."
-                            : "Your community post will be visible in Discover after publishing."}
+                            : visibility === "public"
+                              ? "Your public outfit will appear in Discover and on your creator profile."
+                              : "Only you can see a private outfit on your creator profile."}
                     </p>
                 </div>
 
@@ -524,7 +580,7 @@ const CreateCommunityOutfit = () => {
                         </div>
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <p className="text-xs text-text-secondary">
-                                JPG, PNG, or WEBP <span className="mx-1 text-text-muted">·</span> Up to 4 MB
+                                    JPG, PNG, WEBP, HEIC, or HEIF <span className="mx-1 text-text-muted">·</span> Up to 4 MB
                             </p>
                             {image && (
                                 <button
@@ -548,7 +604,17 @@ const CreateCommunityOutfit = () => {
                                     : "border-border-strong"
                             }`}
                         >
-                            {imagePreview ? (
+                            {imageProcessing ? (
+                                <span className="flex max-w-xs flex-col items-center px-6 py-12 text-center">
+                                    <LoaderCircle
+                                        aria-hidden="true"
+                                        className="mb-3 h-8 w-8 animate-spin text-accent"
+                                    />
+                                    <span className="text-sm font-medium text-text-primary">
+                                        Converting HEIC photo...
+                                    </span>
+                                </span>
+                            ) : imagePreview ? (
                                 <>
                                     <img
                                         src={imagePreview}
@@ -582,7 +648,7 @@ const CreateCommunityOutfit = () => {
                             )}
                             <input
                                 type="file"
-                                accept="image/jpeg,image/png,image/webp"
+                                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
                                 onChange={handleImageChange}
                                 className="sr-only"
                                 aria-label="Upload outfit photo"
@@ -614,16 +680,27 @@ const CreateCommunityOutfit = () => {
                                     <label htmlFor="community-title" className={labelClassName}>
                                         Outfit title <span className="text-accent">*</span>
                                     </label>
-                                    <input
-                                        id="community-title"
-                                        type="text"
-                                        required
-                                        maxLength={120}
-                                        value={title}
-                                        onChange={(event) => setTitle(event.target.value)}
-                                        placeholder="e.g. Relaxed weekend layers"
-                                        className={inputClassName}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            ref={titleInputRef}
+                                            id="community-title"
+                                            type="text"
+                                            required
+                                            maxLength={120}
+                                            value={title}
+                                            onChange={(event) => setTitle(event.target.value)}
+                                            placeholder="e.g. Relaxed weekend layers"
+                                            className={`${inputClassName} pr-12`}
+                                        />
+                                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                                            <EmojiPickerButton
+                                                inputRef={titleInputRef}
+                                                maxLength={120}
+                                                onChange={setTitle}
+                                                value={title}
+                                            />
+                                        </span>
+                                    </div>
                                     <p className="mt-1.5 text-right text-[10px] text-text-muted">
                                         {title.length}/120
                                     </p>
@@ -758,6 +835,57 @@ const CreateCommunityOutfit = () => {
                                     />
                                 </div>
 
+                                <fieldset className="border-t border-border pt-5">
+                                    <legend className={labelClassName}>
+                                        Who can see this outfit?
+                                    </legend>
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        {[
+                                            {
+                                                value: "public",
+                                                label: "Public",
+                                                description: "Visible in Discover and on your profile.",
+                                                Icon: Eye,
+                                            },
+                                            {
+                                                value: "private",
+                                                label: "Private",
+                                                description: "Only visible to you on your profile.",
+                                                Icon: EyeOff,
+                                            },
+                                        ].map(({ value, label, description: visibilityDescription, Icon }) => (
+                                            <button
+                                                key={value}
+                                                type="button"
+                                                onClick={() => setVisibility(value)}
+                                                aria-pressed={visibility === value}
+                                                className={`flex min-h-20 cursor-pointer items-start gap-3 rounded-2xl border p-4 text-left transition ${
+                                                    visibility === value
+                                                        ? "border-accent bg-accent-subtle/60"
+                                                        : "border-border bg-bg hover:border-accent/60"
+                                                }`}
+                                            >
+                                                <Icon
+                                                    aria-hidden="true"
+                                                    className={`mt-0.5 h-5 w-5 shrink-0 ${
+                                                        visibility === value
+                                                            ? "text-accent-hover"
+                                                            : "text-text-muted"
+                                                    }`}
+                                                />
+                                                <span>
+                                                    <span className="block text-sm font-semibold text-text-primary">
+                                                        {label}
+                                                    </span>
+                                                    <span className="mt-1 block text-xs leading-5 text-text-secondary">
+                                                        {visibilityDescription}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </fieldset>
+
                                 <div className="border-t border-border pt-5">
                                     <div className="mb-4">
                                         <h2 className="font-display text-2xl text-text-primary">
@@ -770,7 +898,7 @@ const CreateCommunityOutfit = () => {
                                     <div className="space-y-3">
                                         {PRODUCT_CATEGORIES.map(({ key, label, placeholder }) => (
                                             <label key={key} className="block">
-                                                <span className="mb-1.5 flex items-center gap-2 text-xs font-medium text-text-secondary">
+                                                <span className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-text-secondary">
                                                     <Link2
                                                         aria-hidden="true"
                                                         className="h-3.5 w-3.5 text-accent"
@@ -792,7 +920,7 @@ const CreateCommunityOutfit = () => {
                                                         )
                                                     }
                                                     placeholder={placeholder}
-                                                    className={`${inputClassName} min-h-11 text-xs`}
+                                                    className={`${inputClassName} min-h-11 text-sm`}
                                                 />
                                             </label>
                                         ))}
@@ -811,7 +939,7 @@ const CreateCommunityOutfit = () => {
                                     </p>
                                     <button
                                         type="submit"
-                                        disabled={submitting || taxonomyLoading || Boolean(taxonomyError)}
+                                        disabled={submitting || imageProcessing || taxonomyLoading || Boolean(taxonomyError)}
                                         className="inline-flex min-h-12 items-center justify-center rounded-full bg-text-primary px-6 text-sm font-semibold text-bg transition-all duration-300 hover:-translate-y-0.5 hover:bg-accent hover:text-on-accent hover:shadow-lg active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
                                         {submitting

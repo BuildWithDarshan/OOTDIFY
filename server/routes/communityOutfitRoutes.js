@@ -10,7 +10,10 @@ import {
     getRelatedCommunityOutfits,
     updateCommunityOutfit,
 } from "../controllers/communityOutfitController.js";
-import { clerkAuthMiddleware } from "../middleware/clerkAuthMiddleware.js";
+import {
+    clerkAuthMiddleware,
+    optionalClerkAuthMiddleware,
+} from "../middleware/clerkAuthMiddleware.js";
 import { uploadSingleImage } from "../middleware/uploadMiddleware.js";
 import {
     validateCreateCommunityOutfit,
@@ -20,13 +23,22 @@ import {
 const communityOutfitRouter = express.Router();
 
 const requireUser = [clerkMiddleware(), clerkAuthMiddleware];
+const optionalUser = [clerkMiddleware(), optionalClerkAuthMiddleware];
 
 // Public routes
-communityOutfitRouter.get("/", getCommunityOutfits);
+communityOutfitRouter.get("/", ...optionalUser, getCommunityOutfits);
 communityOutfitRouter.get("/my", ...requireUser, getMyCommunityOutfits);
-communityOutfitRouter.get("/creator/:userId", getCommunityCreatorProfile);
-communityOutfitRouter.get("/:id/related", getRelatedCommunityOutfits);
-communityOutfitRouter.get("/:id", getCommunityOutfitById);
+communityOutfitRouter.get(
+    "/creator/:userId",
+    ...optionalUser,
+    getCommunityCreatorProfile,
+);
+communityOutfitRouter.get(
+    "/:id/related",
+    ...optionalUser,
+    getRelatedCommunityOutfits,
+);
+communityOutfitRouter.get("/:id", ...optionalUser, getCommunityOutfitById);
 
 // Signed-in member routes
 communityOutfitRouter.post(

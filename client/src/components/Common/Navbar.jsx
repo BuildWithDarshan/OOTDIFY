@@ -21,9 +21,9 @@ const Navbar = () => {
     const { isAuthenticated, user, logout } = useAuth();
 
     return (
-        <header className='fixed top-3 left-3 sm:top-4 sm:left-4 z-50'>
+        <header className='fixed top-3 left-3 z-50 w-[min(95vw,20rem)] sm:top-4 sm:left-4'>
             {/* Navbar Header / branding */}
-            <div className='w-[min(95vw,20rem)] bg-bg border border-border rounded-2xl shadow-sm flex items-center gap-2 sm:gap-3 pl-3 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-2 justify-between'>
+            <div className='w-full bg-bg border border-border rounded-2xl shadow-sm flex items-center gap-2 sm:gap-3 pl-3 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-2 justify-between'>
                 <Link
                     to='/'
                     onClick={() => setOpen(false)}
@@ -54,13 +54,13 @@ const Navbar = () => {
 
             {/* Sliding dropdown — grid-rows trick for smooth height animation */}
             <div
-                className={`grid w-[min(85vw,16rem)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                className={`grid w-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                     open ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0 mt-0"
                 }`}
             >
                 <nav className="overflow-hidden">
-                    <div className="bg-bg border border-border rounded-2xl shadow-sm p-5 sm:p-6 max-h-[calc(100dvh-6rem)] overflow-y-auto">
-                        <ul className="space-y-1">
+                    <div className="bg-bg border border-border rounded-2xl shadow-sm p-3 sm:p-6 max-h-[calc(100dvh-5rem)] overflow-y-auto sm:max-h-[calc(100dvh-6rem)]">
+                        <ul className="space-y-0.5 sm:space-y-1">
                             {navLinks.map((link, idx) => (
                                 <li
                                     key={link.to}
@@ -83,7 +83,7 @@ const Navbar = () => {
 
                         {/* Auth section */}
                         <div
-                            className={`mt-5 pt-4 border-t border-border transition-all duration-500 ease-out ${
+                            className={`mt-4 pt-3 border-t border-border transition-all duration-500 ease-out sm:mt-5 sm:pt-4 ${
                                 open ? "translate-x-0 opacity-100" : "-translate-x-4 opacity-0"
                             }`}
                             style={{ transitionDelay: open ? `${(navLinks.length + 1) * 60}ms` : "0ms" }}
@@ -146,15 +146,17 @@ const Navbar = () => {
                         <Link
                             to="/about"
                             onClick={() => setOpen(false)}
-                            className="block mt-5 group"
+                            className="mt-3 block group sm:mt-5"
                         >
-                            <p className="text-sm text-text-muted mb-2 font-semibold">About Us</p>
-                            <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-[var(--color-bg-subtle)]">
+                            <div className="relative w-full aspect-[16/7] overflow-hidden rounded-xl bg-[var(--color-bg-subtle)] sm:aspect-[4/3]">
                                 <img
                                     src={navPreview}
                                     alt="Learn more about OOTDIFY"
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
+                                <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-3 pb-2.5 pt-7 text-sm font-semibold text-white">
+                                    About Us
+                                </span>
                             </div>
                         </Link>
                     </div>

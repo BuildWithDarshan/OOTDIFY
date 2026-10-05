@@ -46,6 +46,7 @@ const validateCommunityOutfit = (req, res, next, isUpdate) => {
         outfitType,
         tags,
         productLinks,
+        visibility,
     } = req.body;
 
     if (!isUpdate && (!title || !gender || !occasion || !outfitType)) {
@@ -83,6 +84,14 @@ const validateCommunityOutfit = (req, res, next, isUpdate) => {
             res,
             `gender must be one of: ${ALLOWED_GENDERS.join(", ")}`,
         );
+    }
+
+    if (
+        visibility !== undefined &&
+        visibility !== "public" &&
+        visibility !== "private"
+    ) {
+        return sendBadRequest(res, "visibility must be public or private");
     }
 
     if (

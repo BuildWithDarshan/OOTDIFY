@@ -27,6 +27,13 @@ const outfitPopulation = [
     { path: "occasion", select: "name slug" },
 ];
 
+const getAccessibleOutfitQuery = (userId) => ({
+    $or: [
+        { visibility: { $ne: "private" } },
+        ...(userId ? [{ user: userId, visibility: "private" }] : []),
+    ],
+});
+
 const parsePagination = (query) => {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
@@ -116,7 +123,7 @@ const validateActiveTaxonomy = async (occasionId, outfitTypeId) => {
 };
 
 const buildFeedQuery = async (queryParams) => {
-    const query = { isVisible: true };
+    const query = { isVisible: true, visibility: { $ne: "private" } };
     const conditions = [];
 
     if (queryParams.gender) {
@@ -249,7 +256,13 @@ export const getCommunityCreatorProfile = async (req, res, next) => {
         }
 
         const { page, limit, skip } = parsePagination(req.query);
-        const outfitQuery = { user: creator._id, isVisible: true };
+        const outfitQuery = {
+            user: creator._id,
+            isVisible: true,
+            ...(req.user?.id === creator._id.toString()
+                ? {}
+                : { visibility: { $ne: "private" } }),
+        };
         const [outfits, total, totals] = await Promise.all([
             CommunityOutfit.find(outfitQuery)
                 .populate(outfitPopulation)
@@ -297,6 +310,7 @@ export const getCommunityOutfitById = async (req, res, next) => {
         const outfit = await CommunityOutfit.findOne({
             _id: req.params.id,
             isVisible: true,
+            ...getAccessibleOutfitQuery(req.user?.id),
         }).populate(outfitPopulation);
 
         if (!outfit) {
@@ -319,6 +333,7 @@ export const getRelatedCommunityOutfits = async (req, res, next) => {
         const sourceOutfit = await CommunityOutfit.findOne({
             _id: req.params.id,
             isVisible: true,
+            ...getAccessibleOutfitQuery(req.user?.id),
         }).select("gender outfitType occasion tags");
 
         if (!sourceOutfit) {
@@ -345,6 +360,7 @@ export const getRelatedCommunityOutfits = async (req, res, next) => {
             $and: [
                 {
                     isVisible: true,
+                    visibility: { $ne: "private" },
                     _id: { $ne: sourceOutfit._id },
                     $or: matchingSignals,
                 },
@@ -463,7 +479,7 @@ export const createCommunityOutfit = async (req, res, next) => {
     let uploadedImage;
 
     try {
-        const { title, description, gender, occasion, outfitType, tags, productLinks } =
+        const { title, description, gender, occasion, outfitType, tags, productLinks, visibility } =
             req.body;
 
         const [occasionId, outfitTypeId] = await Promise.all([
@@ -488,6 +504,7 @@ export const createCommunityOutfit = async (req, res, next) => {
             outfitType: outfitTypeId,
             tags: tags || [],
             productLinks: productLinks || {},
+            visibility: visibility || "public",
         });
 
         return res.status(201).json({
@@ -523,7 +540,7 @@ export const updateCommunityOutfit = async (req, res, next) => {
             });
         }
 
-        const { title, description, gender, occasion, outfitType, tags, productLinks } =
+        const { title, description, gender, occasion, outfitType, tags, productLinks, visibility } =
             req.body;
 
         const occasionId = occasion === undefined
@@ -544,6 +561,7 @@ export const updateCommunityOutfit = async (req, res, next) => {
         if (occasion !== undefined) outfit.occasion = occasionId;
         if (outfitType !== undefined) outfit.outfitType = outfitTypeId;
         if (tags !== undefined) outfit.tags = tags;
+        if (visibility !== undefined) outfit.visibility = visibility;
         if (productLinks !== undefined) {
             outfit.productLinks = {
                 ...outfit.productLinks.toObject?.(),

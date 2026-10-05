@@ -30,6 +30,7 @@ const createCommunityOutfitFormData = ({
     outfitType,
     tags,
     productLinks,
+    visibility,
 }) => {
     const formData = new FormData();
 
@@ -47,6 +48,7 @@ const createCommunityOutfitFormData = ({
     if (productLinks !== undefined) {
         formData.append("productLinks", JSON.stringify(productLinks));
     }
+    if (visibility !== undefined) formData.append("visibility", visibility);
 
     return formData;
 };

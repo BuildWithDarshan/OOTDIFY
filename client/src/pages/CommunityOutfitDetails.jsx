@@ -6,8 +6,10 @@ import {
     AlertTriangle,
     Bookmark,
     BookmarkCheck,
+    Download,
     Heart,
     MessageCircle,
+    MoreHorizontal,
     Pencil,
     Plus,
     Search,
@@ -18,9 +20,11 @@ import {
     X,
 } from "lucide-react";
 import PageMeta from "../components/Common/PageMeta.jsx";
+import EmojiPickerButton from "../components/Common/EmojiPickerButton.jsx";
 import CommunityOutfitReport from "../components/CommunityOutfitReport.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import {
+    attachCommunityInteractionStates,
     addCommunityComment,
     deleteCommunityComment,
     getCommunityComments,
@@ -117,10 +121,48 @@ const LoadingState = () => (
     </main>
 );
 
+const MasonryGridItem = ({ children, className = "" }) => {
+    const itemRef = useRef(null);
+
+    useEffect(() => {
+        const item = itemRef.current;
+        const grid = item?.parentElement;
+        const content = item?.firstElementChild;
+        if (!item || !grid || !content) return undefined;
+
+        const updateRowSpan = () => {
+            const gridStyles = window.getComputedStyle(grid);
+            const rowHeight = Number.parseFloat(gridStyles.gridAutoRows) || 8;
+            const rowGap = Number.parseFloat(gridStyles.rowGap) || 0;
+            const contentHeight = content.getBoundingClientRect().height;
+            const rowSpan = Math.ceil(
+                (contentHeight + rowGap) / (rowHeight + rowGap),
+            );
+
+            item.style.gridRowEnd = `span ${Math.max(1, rowSpan)}`;
+        };
+        const observer = new ResizeObserver(updateRowSpan);
+        observer.observe(content);
+        updateRowSpan();
+
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div
+            ref={itemRef}
+            className={`self-start ${className}`}
+            style={{ gridRowEnd: "span 1" }}
+        >
+            {children}
+        </div>
+    );
+};
+
 const RelatedCommunityCard = ({ outfit }) => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState(Boolean(outfit.isSaved));
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState("");
 
@@ -133,12 +175,15 @@ const RelatedCommunityCard = ({ outfit }) => {
         }
         if (saving) return;
 
+        const previousSaved = saved;
+        setSaved(!saved);
         setSaving(true);
         setSaveError("");
         try {
             const data = await toggleCommunitySave(outfit._id);
             setSaved(Boolean(data.saved));
         } catch (error) {
+            setSaved(previousSaved);
             setSaveError(
                 error.response?.data?.message || "Could not update saved outfit.",
             );
@@ -148,7 +193,7 @@ const RelatedCommunityCard = ({ outfit }) => {
     };
 
     return (
-        <article className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
+        <article className="group relative overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)]">
             <Link
                 to={`/community/${outfit._id}`}
                 className="block"
@@ -163,34 +208,54 @@ const RelatedCommunityCard = ({ outfit }) => {
                     />
                 </div>
             </Link>
-            <div className="p-3 sm:p-3.5">
-                <Link to={`/community/${outfit._id}`} className="block">
-                    <h3 className="line-clamp-2 font-display text-lg leading-tight text-text-primary sm:text-xl">
-                        {outfit.title}
-                    </h3>
+            {outfit.user?._id && (
+                <Link
+                    to={`/community/creator/${outfit.user._id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`View ${outfit.user.name || "creator"}'s profile`}
+                    title={outfit.user.name || "Community creator"}
+                    className="absolute left-2.5 top-2.5 z-10 hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/90 text-xs font-semibold uppercase text-accent-hover shadow-md backdrop-blur transition-opacity sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                >
+                    {outfit.user.profilePicture?.url ? (
+                        <img
+                            src={outfit.user.profilePicture.url}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        (outfit.user.name || "C").slice(0, 1)
+                    )}
                 </Link>
-                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/70 pt-2.5 text-[11px] text-text-muted">
-                    <span className="inline-flex shrink-0 items-center gap-1.5">
-                        <Heart aria-hidden="true" className="h-3.5 w-3.5" />
-                        {outfit.likeCount ?? 0}
+            )}
+            <div className="p-3 sm:p-3.5">
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                    <Link
+                        to={`/community/${outfit._id}`}
+                        className="min-w-0 flex-1 truncate font-display text-lg leading-tight text-text-primary sm:text-xl"
+                    >
+                        {outfit.title}
+                    </Link>
+                    <span className="inline-flex shrink-0 items-center gap-2 text-[11px] text-text-muted">
+                        <span
+                            className={`inline-flex items-center gap-1 ${
+                                outfit.isLiked ? "text-accent-hover" : ""
+                            }`}
+                        >
+                            <Heart
+                                aria-hidden="true"
+                                className={`h-3.5 w-3.5 ${outfit.isLiked ? "fill-current" : ""}`}
+                            />
+                            {outfit.likeCount ?? 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
                         <MessageCircle
                             aria-hidden="true"
-                            className="ml-1 h-3.5 w-3.5"
+                            className="h-3.5 w-3.5"
                         />
                         {outfit.commentCount ?? 0}
-                    </span>
-                    {outfit.user?._id ? (
-                        <Link
-                            to={`/community/creator/${outfit.user._id}`}
-                            className="max-w-[55%] truncate text-right text-text-secondary transition hover:text-accent-hover"
-                        >
-                            By {outfit.user.name || "Community member"}
-                        </Link>
-                    ) : (
-                        <span className="max-w-[55%] truncate text-right text-text-secondary">
-                            By {outfit.user?.name || "Community member"}
                         </span>
-                    )}
+                    </span>
                 </div>
             </div>
             <button
@@ -219,7 +284,25 @@ const RelatedCommunityCard = ({ outfit }) => {
     );
 };
 
-const RelatedCommunityOutfits = ({ outfitId }) => {
+const RelatedCommunityCardSkeleton = () => (
+    <div
+        aria-hidden="true"
+        className="group relative overflow-hidden rounded-2xl border border-border/70 bg-bg"
+    >
+        <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
+        <div className="flex items-center justify-between gap-2 p-3 sm:p-3.5">
+            <div className="h-4 w-2/5 animate-pulse rounded-full bg-bg-subtle" />
+            <div className="flex shrink-0 items-center gap-2">
+                <div className="h-3 w-8 animate-pulse rounded-full bg-bg-subtle" />
+                <div className="h-3 w-8 animate-pulse rounded-full bg-bg-subtle" />
+            </div>
+        </div>
+        <div className="absolute left-2.5 top-2.5 hidden h-9 w-9 animate-pulse rounded-full bg-white/70 sm:block sm:opacity-0 sm:group-hover:opacity-100" />
+        <div className="absolute right-2.5 top-2.5 h-9 w-9 animate-pulse rounded-full bg-white/70 sm:opacity-0 sm:group-hover:opacity-100" />
+    </div>
+);
+
+const RelatedCommunityOutfits = ({ outfitId, children }) => {
     const { user, isAuthenticated } = useAuth();
     const [categories, setCategories] = useState([]);
     const [occasions, setOccasions] = useState([]);
@@ -311,7 +394,11 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
                     limit: RELATED_PAGE_SIZE,
                 });
                 if (cancelled || requestId !== requestIdRef.current) return;
-                setOutfits(data.outfits || []);
+                const pageOutfits = isAuthenticated
+                    ? await attachCommunityInteractionStates(data.outfits || [])
+                    : data.outfits || [];
+                if (cancelled || requestId !== requestIdRef.current) return;
+                setOutfits(pageOutfits);
                 setPage(1);
                 setHasMore(Boolean(data.pagination?.hasMore));
             } catch (requestError) {
@@ -331,7 +418,7 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
         return () => {
             cancelled = true;
         };
-    }, [outfitId, query, retryKey]);
+    }, [isAuthenticated, outfitId, query, retryKey]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loading || loadingMoreRef.current || error) return;
@@ -348,12 +435,16 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
                 limit: RELATED_PAGE_SIZE,
             });
             if (requestId !== requestIdRef.current) return;
+            const pageOutfits = isAuthenticated
+                ? await attachCommunityInteractionStates(data.outfits || [])
+                : data.outfits || [];
+            if (requestId !== requestIdRef.current) return;
 
             setOutfits((current) => {
                 const knownIds = new Set(current.map((item) => item._id));
                 return [
                     ...current,
-                    ...(data.outfits || []).filter(
+                    ...pageOutfits.filter(
                         (item) => !knownIds.has(item._id),
                     ),
                 ];
@@ -373,7 +464,7 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
                 setLoadingMore(false);
             }
         }
-    }, [error, hasMore, loading, outfitId, page, query]);
+    }, [error, hasMore, isAuthenticated, loading, outfitId, page, query]);
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
@@ -485,7 +576,7 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
         <>
 
             {searchOpen && (
-                <div className="fixed left-3 right-3 top-16 z-50 lg:left-[18rem] lg:right-[19rem] lg:top-4">
+                <div className="fixed left-3 right-3 top-16 z-50 lg:left-[calc(50%+3.875rem)] lg:right-auto lg:top-4 lg:w-[min(calc(100vw-38rem),55rem)] lg:-translate-x-1/2">
                     <Search
                         aria-hidden="true"
                         className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
@@ -503,7 +594,7 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
             )}
 
             {filtersOpen && (
-                <div className="fixed left-3 right-3 top-16 z-50 rounded-2xl border border-border bg-bg p-3 shadow-[0_12px_36px_rgba(8,28,21,0.18)] sm:p-4 lg:left-[18rem] lg:right-[19rem] lg:top-4">
+                <div className="fixed left-3 right-3 top-16 z-50 rounded-2xl border border-border bg-bg p-3 shadow-[0_12px_36px_rgba(8,28,21,0.18)] sm:p-4 lg:left-[calc(50%+3.875rem)] lg:right-auto lg:top-4 lg:w-[min(calc(100vw-38rem),55rem)] lg:-translate-x-1/2">
                     <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                         <Select
                             value={
@@ -610,41 +701,48 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
             </div>
             {filterPanel}
 
-            <aside className="min-w-0 lg:col-start-2 lg:row-start-1" aria-label="Related outfits">
-                <div className="mb-4 pt-4 lg:pt-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent">
-                        Keep exploring
-                    </p>
-                    <h2 className="mt-1 font-display text-3xl italic text-text-primary sm:text-4xl">
-                        More like this
-                    </h2>
-                    <p className="mt-1 text-xs leading-5 text-text-secondary">
-                        Looks matching this outfit’s style, category, occasion, or audience.
-                    </p>
-                </div>
-            {loading && outfits.length === 0 && (
-                <div
-                    className="columns-2 gap-3 sm:gap-4"
-                    role="status"
-                    aria-label="Loading related outfits"
-                >
-                    {Array.from({ length: 5 }, (_, index) => (
-                        <div
-                            key={index}
-                            className="mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg"
+            <div
+                aria-label="Community outfit and related outfits"
+                className="grid grid-cols-2 [grid-auto-flow:dense] [grid-auto-rows:8px] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5"
+                role={loading && outfits.length === 0 ? "status" : undefined}
+            >
+                <MasonryGridItem className="col-span-full lg:col-span-3">
+                    {children}
+                </MasonryGridItem>
+
+                {loading &&
+                    outfits.length === 0 &&
+                    Array.from({ length: 5 }, (_, index) => (
+                        <MasonryGridItem
+                            key={`initial-${index}`}
+                            className="col-span-1"
                         >
-                            <div className={`animate-pulse bg-bg-subtle ${index % 2 ? "aspect-[3/4]" : "aspect-[4/5]"}`} />
-                            <div className="space-y-2 p-3">
-                                <div className="h-4 w-4/5 animate-pulse rounded-full bg-bg-subtle" />
-                                <div className="h-3 w-1/2 animate-pulse rounded-full bg-bg-subtle" />
-                            </div>
-                        </div>
+                            <RelatedCommunityCardSkeleton />
+                        </MasonryGridItem>
                     ))}
-                </div>
-            )}
+
+                {outfits.map((relatedOutfit) => (
+                    <MasonryGridItem
+                        key={relatedOutfit._id}
+                        className="col-span-1"
+                    >
+                        <RelatedCommunityCard outfit={relatedOutfit} />
+                    </MasonryGridItem>
+                ))}
+
+                {loadingMore &&
+                    Array.from({ length: 5 }, (_, index) => (
+                        <MasonryGridItem
+                            key={`more-${index}`}
+                            className="col-span-1"
+                        >
+                            <RelatedCommunityCardSkeleton />
+                        </MasonryGridItem>
+                    ))}
+            </div>
 
             {!loading && error && outfits.length === 0 && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
                     <p role="alert">{error}</p>
                     <button
                         type="button"
@@ -655,75 +753,29 @@ const RelatedCommunityOutfits = ({ outfitId }) => {
                     </button>
                 </div>
             )}
-
             {!loading && !error && outfits.length === 0 && (
-                <p className="rounded-2xl border border-dashed border-border-strong bg-bg px-4 py-6 text-sm leading-6 text-text-secondary">
+                <p className="mt-5 rounded-2xl border border-dashed border-border-strong bg-bg px-4 py-6 text-sm leading-6 text-text-secondary">
                     No similar community outfits yet. Check back as more looks are shared.
                 </p>
             )}
-
-            {outfits.length > 0 && (
-                <div
-                    aria-label="Related community outfits"
-                    className="columns-2 gap-3 sm:gap-4"
-                >
-                    {outfits.slice(0, 6).map((relatedOutfit) => (
-                        <RelatedCommunityCard
-                            key={relatedOutfit._id}
-                            outfit={relatedOutfit}
-                        />
-                    ))}
+            {error && outfits.length > 0 && (
+                <div className="py-4 text-center">
+                    <p role="alert" className="text-xs text-red-700">{error}</p>
+                    <button
+                        type="button"
+                        onClick={retry}
+                        className="mt-2 text-xs font-semibold text-accent-hover underline"
+                    >
+                        Try loading more
+                    </button>
                 </div>
             )}
-            </aside>
-
-            <section className="min-w-0 lg:col-span-2" aria-label="Matching community outfit feed">
-                {outfits.length > 6 && (
-                    <div className="mb-5">
-                        <h2 className="font-display text-3xl italic text-text-primary sm:text-4xl">
-                            More outfits for you
-                        </h2>
-                    </div>
-                )}
-                {outfits.length > 6 && (
-                    <div className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4">
-                        {outfits.slice(6).map((relatedOutfit) => (
-                            <RelatedCommunityCard key={relatedOutfit._id} outfit={relatedOutfit} />
-                        ))}
-                        {loadingMore &&
-                            Array.from({ length: 5 }, (_, index) => (
-                                <div
-                                    key={`more-${index}`}
-                                    className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg"
-                                >
-                                    <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
-                                    <div className="space-y-2 p-3">
-                                        <div className="h-4 w-4/5 animate-pulse rounded-full bg-bg-subtle" />
-                                        <div className="h-3 w-1/2 animate-pulse rounded-full bg-bg-subtle" />
-                                    </div>
-                                </div>
-                            ))}
-                    </div>
-                )}
-                {error && outfits.length > 0 && (
-                    <div className="py-4 text-center">
-                        <p role="alert" className="text-xs text-red-700">{error}</p>
-                        <button
-                            type="button"
-                            onClick={retry}
-                            className="mt-2 text-xs font-semibold text-accent-hover underline"
-                        >
-                            Try loading more
-                        </button>
-                    </div>
-                )}
-                {outfits.length > 0 && !hasMore && !loading && (
-                    <p className="py-5 text-center text-[10px] uppercase tracking-[0.16em] text-text-muted">
-                        You’re all caught up
-                    </p>
-                )}
-                <div ref={sentinelRef} aria-hidden="true" className="h-1" />
-            </section>
+            {outfits.length > 0 && !hasMore && !loading && (
+                <p className="py-5 text-center text-[10px] uppercase tracking-[0.16em] text-text-muted">
+                    You’re all caught up
+                </p>
+            )}
+            <div ref={sentinelRef} aria-hidden="true" className="h-1" />
         </>
     );
 };
@@ -748,12 +800,48 @@ const CommunityOutfitDetails = () => {
     const [commentsOpen, setCommentsOpen] = useState(false);
     const [commentsLoadedFor, setCommentsLoadedFor] = useState("");
     const [commentText, setCommentText] = useState("");
+    const commentInputRef = useRef(null);
     const [commentSubmitting, setCommentSubmitting] = useState(false);
     const [commentActionError, setCommentActionError] = useState("");
     const [deletingCommentId, setDeletingCommentId] = useState("");
     const [deleteOutfitLoading, setDeleteOutfitLoading] = useState(false);
     const [deleteOutfitError, setDeleteOutfitError] = useState("");
     const [deleteOutfitDialogOpen, setDeleteOutfitDialogOpen] = useState(false);
+    const [outfitMenuOpen, setOutfitMenuOpen] = useState(false);
+    const [imageDownloadError, setImageDownloadError] = useState("");
+    const [imageDownloading, setImageDownloading] = useState(false);
+
+    const handleDownloadImage = async () => {
+        setImageDownloading(true);
+        setImageDownloadError("");
+        try {
+            const response = await fetch(outfit.image.url);
+            if (!response.ok) {
+                throw new Error("The outfit image could not be downloaded.");
+            }
+
+            const imageBlob = await response.blob();
+            const downloadUrl = URL.createObjectURL(imageBlob);
+            const link = document.createElement("a");
+            const fileExtension =
+                imageBlob.type.split("/")[1]?.split(";")[0] || "jpg";
+            link.href = downloadUrl;
+            link.download = `${(outfit.title || "community-outfit")
+                .trim()
+                .replace(/[^\w.-]+/g, "-")}.${fileExtension}`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+            setOutfitMenuOpen(false);
+        } catch (error) {
+            setImageDownloadError(
+                error.message || "The outfit image could not be downloaded.",
+            );
+        } finally {
+            setImageDownloading(false);
+        }
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -892,6 +980,33 @@ const CommunityOutfitDetails = () => {
         if (!isAuthenticated) return;
         if (interactionLoading) return;
 
+        const previousState = interactionMatchesUser
+            ? interactionState
+            : { outfitId: id, userId: user?.id, liked: false, saved };
+        const nextLiked = !liked;
+        const previousCount = outfit.likeCount ?? 0;
+        setInteractionState({
+            ...previousState,
+            outfitId: id,
+            userId: user?.id,
+            liked: nextLiked,
+            saved,
+            error: "",
+        });
+        setOutfitResult((current) =>
+            current.id === id && current.outfit
+                ? {
+                      ...current,
+                      outfit: {
+                          ...current.outfit,
+                          likeCount: Math.max(
+                              0,
+                              previousCount + (nextLiked ? 1 : -1),
+                          ),
+                      },
+                  }
+                : current,
+        );
         setInteractionLoading(true);
         try {
             const data = await toggleCommunityLike(id);
@@ -911,13 +1026,22 @@ const CommunityOutfitDetails = () => {
                     : current,
             );
         } catch (error) {
-            setInteractionState((current) => ({
-                ...current,
+            setInteractionState({
+                ...previousState,
                 outfitId: id,
                 userId: user?.id,
+                liked,
                 error:
                     error.response?.data?.message || "Could not update your like.",
-            }));
+            });
+            setOutfitResult((current) =>
+                current.id === id && current.outfit
+                    ? {
+                          ...current,
+                          outfit: { ...current.outfit, likeCount: previousCount },
+                      }
+                    : current,
+            );
         } finally {
             setInteractionLoading(false);
         }
@@ -927,6 +1051,33 @@ const CommunityOutfitDetails = () => {
         if (!isAuthenticated) return;
         if (interactionLoading) return;
 
+        const previousState = interactionMatchesUser
+            ? interactionState
+            : { outfitId: id, userId: user?.id, liked, saved: false };
+        const nextSaved = !saved;
+        const previousCount = outfit.saveCount ?? 0;
+        setInteractionState({
+            ...previousState,
+            outfitId: id,
+            userId: user?.id,
+            liked,
+            saved: nextSaved,
+            error: "",
+        });
+        setOutfitResult((current) =>
+            current.id === id && current.outfit
+                ? {
+                      ...current,
+                      outfit: {
+                          ...current.outfit,
+                          saveCount: Math.max(
+                              0,
+                              previousCount + (nextSaved ? 1 : -1),
+                          ),
+                      },
+                  }
+                : current,
+        );
         setInteractionLoading(true);
         try {
             const data = await toggleCommunitySave(id);
@@ -946,14 +1097,23 @@ const CommunityOutfitDetails = () => {
                     : current,
             );
         } catch (error) {
-            setInteractionState((current) => ({
-                ...current,
+            setInteractionState({
+                ...previousState,
                 outfitId: id,
                 userId: user?.id,
+                saved,
                 error:
                     error.response?.data?.message ||
                     "Could not update your saved outfits.",
-            }));
+            });
+            setOutfitResult((current) =>
+                current.id === id && current.outfit
+                    ? {
+                          ...current,
+                          outfit: { ...current.outfit, saveCount: previousCount },
+                      }
+                    : current,
+            );
         } finally {
             setInteractionLoading(false);
         }
@@ -1103,7 +1263,7 @@ const CommunityOutfitDetails = () => {
         : "";
 
     return (
-        <main className="relative isolate min-h-screen overflow-clip bg-bg-subtle/35 pb-16">
+        <main className="relative isolate min-h-screen overflow-clip bg-bg-subtle/35 pb-16 [&_a]:cursor-pointer [&_button]:cursor-pointer">
             <PageMeta
                 title={`${outfit.title} | OOTDIFY Community`}
                 description={
@@ -1136,18 +1296,50 @@ const CommunityOutfitDetails = () => {
                     </Link>
                 </div>
 
-                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-6 xl:gap-8">
-                    <section className="min-w-0 overflow-hidden rounded-3xl border border-border/80 bg-bg shadow-[0_18px_55px_rgba(8,28,21,0.09)] lg:col-start-1 lg:row-start-1">
+                <RelatedCommunityOutfits key={id} outfitId={id}>
+                    <section className="min-w-0 overflow-hidden rounded-3xl border border-border/80 bg-bg shadow-[0_18px_55px_rgba(8,28,21,0.09)]">
                         <div className="group relative flex items-center justify-center overflow-hidden bg-bg-subtle/60">
                             <img
                                 src={outfit.image?.url}
                                 alt={outfit.title}
-                                className="block h-auto max-h-[72vh] w-full object-contain sm:max-h-[82vh]"
+                                className="block h-auto max-h-[62dvh] w-full object-contain sm:max-h-[75dvh]"
                             />
-                            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/35 to-transparent" />
-                            <span className="absolute bottom-4 left-4 rounded-full border border-white/40 bg-white/85 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-primary shadow-sm backdrop-blur-md sm:bottom-5 sm:left-5">
-                                Community look
-                            </span>
+                            <div className="absolute right-3 top-3 z-20">
+                                <button
+                                    type="button"
+                                    onClick={() => setOutfitMenuOpen((open) => !open)}
+                                    aria-label="More outfit options"
+                                    aria-expanded={outfitMenuOpen}
+                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:bg-white"
+                                >
+                                    <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
+                                </button>
+                                {outfitMenuOpen && (
+                                    <div className="absolute right-0 mt-2 w-52 overflow-hidden rounded-xl border border-border bg-bg p-1.5 shadow-[0_12px_32px_rgba(8,28,21,0.18)]">
+                                        <button
+                                            type="button"
+                                            onClick={handleDownloadImage}
+                                            disabled={imageDownloading}
+                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-text-primary transition hover:bg-bg-subtle disabled:cursor-wait disabled:opacity-60"
+                                        >
+                                            <Download aria-hidden="true" className="h-4 w-4" />
+                                            {imageDownloading ? "Preparing download..." : "Download image"}
+                                        </button>
+                                        {imageDownloadError && (
+                                            <p role="alert" className="px-3 py-1.5 text-xs text-red-700">
+                                                {imageDownloadError}
+                                            </p>
+                                        )}
+                                        {!isOwner && (
+                                            <CommunityOutfitReport
+                                                outfit={outfit}
+                                                menuItem
+                                                onOpen={() => setOutfitMenuOpen(false)}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                     <div className="space-y-4 p-4 sm:p-5 lg:p-6">
@@ -1161,7 +1353,7 @@ const CommunityOutfitDetails = () => {
                                 </span>
                             </div>
 
-                            <h1 className="font-display text-3xl italic leading-tight text-text-primary sm:text-4xl">
+                            <h1 className="font-display not-italic text-2xl font-medium leading-tight text-text-primary sm:text-3xl">
                                 {outfit.title}
                             </h1>
 
@@ -1218,10 +1410,15 @@ const CommunityOutfitDetails = () => {
                                 <button
                                     type="button"
                                     onClick={handleToggleLike}
-                                    disabled={!isAuthenticated || interactionLoading || authLoading}
+                                    disabled={
+                                        !isAuthenticated ||
+                                        interactionLoading ||
+                                        authLoading ||
+                                        (isAuthenticated && !interactionMatchesUser)
+                                    }
                                     aria-pressed={liked}
                                     title={!isAuthenticated ? "Sign in to like this outfit" : undefined}
-                                    className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                                         liked
                                             ? "bg-accent-subtle text-accent-hover"
                                             : "border border-border bg-bg text-text-secondary hover:border-accent hover:text-accent-hover"
@@ -1231,16 +1428,20 @@ const CommunityOutfitDetails = () => {
                                         aria-hidden="true"
                                         className={`h-4 w-4 ${liked ? "fill-current" : ""}`}
                                     />
-                                    {liked ? "Liked" : "Like"}
                                     <span>{outfit.likeCount ?? 0}</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleToggleSave}
-                                    disabled={!isAuthenticated || interactionLoading || authLoading}
+                                    disabled={
+                                        !isAuthenticated ||
+                                        interactionLoading ||
+                                        authLoading ||
+                                        (isAuthenticated && !interactionMatchesUser)
+                                    }
                                     aria-pressed={saved}
                                     title={!isAuthenticated ? "Sign in to save this outfit" : undefined}
-                                    className={`inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                                         saved
                                             ? "bg-accent-subtle text-accent-hover"
                                             : "border border-border bg-bg text-text-secondary hover:border-accent hover:text-accent-hover"
@@ -1251,7 +1452,6 @@ const CommunityOutfitDetails = () => {
                                     ) : (
                                         <Bookmark aria-hidden="true" className="h-4 w-4" />
                                     )}
-                                    {saved ? "Saved" : "Save"}
                                     <span>{outfit.saveCount ?? 0}</span>
                                 </button>
                                 <button
@@ -1381,12 +1581,6 @@ const CommunityOutfitDetails = () => {
                             )}
                         </section>
 
-                        {!isOwner && (
-                            <div className="flex justify-end">
-                                <CommunityOutfitReport outfit={outfit} iconOnly />
-                            </div>
-                        )}
-
                         {commentsOpen && (
                         <section
                             id="community-comments-panel"
@@ -1413,6 +1607,7 @@ const CommunityOutfitDetails = () => {
                                     </label>
                                     <div className="rounded-2xl border border-border bg-bg transition focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10">
                                         <textarea
+                                            ref={commentInputRef}
                                             id="community-comment"
                                             value={commentText}
                                             onChange={(event) =>
@@ -1424,9 +1619,17 @@ const CommunityOutfitDetails = () => {
                                             className="w-full resize-y bg-transparent px-4 py-3 text-sm text-text-primary outline-none placeholder:text-text-muted"
                                         />
                                         <div className="flex items-center justify-between border-t border-border px-3 py-2">
-                                            <span className="text-[10px] text-text-muted">
-                                                {commentText.length}/1000
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <EmojiPickerButton
+                                                    inputRef={commentInputRef}
+                                                    maxLength={1000}
+                                                    onChange={setCommentText}
+                                                    value={commentText}
+                                                />
+                                                <span className="text-[10px] text-text-muted">
+                                                    {commentText.length}/1000
+                                                </span>
+                                            </div>
                                             <button
                                                 type="submit"
                                                 disabled={!commentText.trim() || commentSubmitting}
@@ -1551,9 +1754,7 @@ const CommunityOutfitDetails = () => {
                         )}
                     </div>
                     </section>
-
-                    <RelatedCommunityOutfits key={id} outfitId={id} />
-                </div>
+                </RelatedCommunityOutfits>
             </div>
             {isOwner && deleteOutfitDialogOpen && (
                 <div

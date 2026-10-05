@@ -8,6 +8,25 @@ export const getCommunityInteractionState = (outfitId) =>
         .get(`${COMMUNITY_OUTFITS_URL}/${outfitId}/state`)
         .then((res) => res.data);
 
+export const getCommunityInteractionStates = (outfitIds) =>
+    api
+        .post(`${COMMUNITY_OUTFITS_URL}/states`, { outfitIds })
+        .then((res) => res.data.states);
+
+export const attachCommunityInteractionStates = async (outfits) => {
+    if (outfits.length === 0) return outfits;
+
+    const states = await getCommunityInteractionStates(
+        outfits.map((outfit) => outfit._id),
+    );
+
+    return outfits.map((outfit) => ({
+        ...outfit,
+        isLiked: Boolean(states[outfit._id]?.liked),
+        isSaved: Boolean(states[outfit._id]?.saved),
+    }));
+};
+
 export const toggleCommunityLike = (outfitId) =>
     api
         .post(`${COMMUNITY_OUTFITS_URL}/${outfitId}/like`)

@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import Select from "react-select";
 import { getCommunityOutfits } from "../services/communityOutfitService.js";
-import { toggleCommunitySave } from "../services/communityInteractionService.js";
+import {
+    attachCommunityInteractionStates,
+    toggleCommunitySave,
+} from "../services/communityInteractionService.js";
 import { getOccasions, getOutfitTypes } from "../services/taxonomyService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -113,7 +116,7 @@ const selectCommonProps = {
 const CommunityCard = ({ outfit }) => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
-    const [saved, setSaved] = useState(false);
+    const [saved, setSaved] = useState(Boolean(outfit.isSaved));
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState("");
 
@@ -127,12 +130,14 @@ const CommunityCard = ({ outfit }) => {
         }
         if (saving) return;
 
+        const previousSaved = saved;
+        setSaved(!saved);
         setSaving(true);
         setSaveError("");
         try {
-            const data = await toggleCommunitySave(outfit._id);
-            setSaved(Boolean(data.saved));
+            await toggleCommunitySave(outfit._id);
         } catch (error) {
+            setSaved(previousSaved);
             setSaveError(
                 error.response?.data?.message || "Could not update saved outfit.",
             );
@@ -142,7 +147,7 @@ const CommunityCard = ({ outfit }) => {
     };
 
     return (
-        <article className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
+        <article className="group relative mb-3 cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
             <Link
                 to={`/community/${outfit._id}`}
                 className="block"
@@ -158,6 +163,27 @@ const CommunityCard = ({ outfit }) => {
                 </div>
             </Link>
 
+            {outfit.user?._id && (
+                <Link
+                    to={`/community/creator/${outfit.user._id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    aria-label={`View ${outfit.user.name || "creator"}'s profile`}
+                    title={outfit.user.name || "Community creator"}
+                    className="absolute left-2.5 top-2.5 z-10 hidden h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/90 text-xs font-semibold uppercase text-accent-hover shadow-md backdrop-blur transition-opacity sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                >
+                    {outfit.user.profilePicture?.url ? (
+                        <img
+                            src={outfit.user.profilePicture.url}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                        />
+                    ) : (
+                        (outfit.user.name || "C").slice(0, 1)
+                    )}
+                </Link>
+            )}
+
             <button
                 type="button"
                 onClick={handleSave}
@@ -168,86 +194,51 @@ const CommunityCard = ({ outfit }) => {
                     saveError ||
                     (saved ? "Remove from saved outfits" : "Save outfit")
                 }
-                className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition duration-200 hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
-                    saved ? "text-accent-hover sm:opacity-100" : ""
+                className={`absolute right-2.5 top-2.5 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/60 bg-white/90 shadow-md backdrop-blur transition-[color,background-color,transform] duration-150 ease-out hover:scale-105 hover:bg-white disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 ${
+                    saved
+                        ? "text-accent-hover sm:opacity-100"
+                        : "text-text-primary"
                 }`}
             >
                 {saved ? (
-                    <BookmarkCheck aria-hidden="true" className="h-4 w-4" />
+                    <BookmarkCheck
+                        aria-hidden="true"
+                        className="h-4 w-4 text-accent-hover transition-colors duration-150"
+                    />
                 ) : (
-                    <Bookmark aria-hidden="true" className="h-4 w-4" />
+                    <Bookmark
+                        aria-hidden="true"
+                        className="h-4 w-4 transition-colors duration-150"
+                    />
                 )}
             </button>
 
             <div className="p-3 sm:p-3.5">
-                <Link to={`/community/${outfit._id}`} className="block">
-                    <h2 className="line-clamp-2 font-display text-lg leading-tight text-text-primary sm:text-xl">
-                        {outfit.title}
-                    </h2>
-                </Link>
-                <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-border/70 pt-2.5 text-[11px] text-text-muted sm:hidden">
-                    <span className="inline-flex items-center gap-1.5">
-                        <Heart aria-hidden="true" className="h-3.5 w-3.5" />
-                        {outfit.likeCount ?? 0}
-                        <MessageCircle
-                            aria-hidden="true"
-                            className="ml-1 h-3.5 w-3.5"
-                        />
-                        {outfit.commentCount ?? 0}
-                    </span>
-                    {outfit.user?._id ? (
-                        <Link
-                            to={`/community/creator/${outfit.user._id}`}
-                            onClick={(event) => event.stopPropagation()}
-                            className="max-w-[55%] truncate text-right text-text-secondary transition hover:text-accent-hover"
-                        >
-                            By {outfit.user?.name || "Community member"}
-                        </Link>
-                    ) : (
-                        <span className="max-w-[55%] truncate text-right text-text-secondary">
-                            By {outfit.user?.name || "Community member"}
-                        </span>
-                    )}
-                </div>
-                {outfit.user?._id ? (
+                <div className="flex min-w-0 items-center justify-between gap-2">
                     <Link
-                        to={`/community/creator/${outfit.user._id}`}
-                        onClick={(event) => event.stopPropagation()}
-                        className="mt-3 hidden min-w-0 items-center gap-2.5 border-t border-border/70 pt-3 transition sm:flex"
+                        to={`/community/${outfit._id}`}
+                        className="min-w-0 flex-1 truncate font-display text-base leading-tight text-text-primary sm:text-xl"
                     >
-                        {outfit.user.profilePicture?.url ? (
-                            <img
-                                src={outfit.user.profilePicture.url}
-                                alt=""
-                                loading="lazy"
-                                className="h-8 w-8 shrink-0 rounded-full object-cover"
-                            />
-                        ) : (
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bg-subtle text-xs font-semibold uppercase text-accent-hover">
-                                {(outfit.user.name || "C").slice(0, 1)}
-                            </span>
-                        )}
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-text-secondary transition hover:text-accent-hover">
-                            {outfit.user.name || "Community member"}
-                        </span>
-                        <span className="inline-flex shrink-0 items-center gap-2 text-[10px] text-text-muted">
-                            <span className="inline-flex items-center gap-1">
-                                <Heart
-                                    aria-hidden="true"
-                                    className="h-3 w-3"
-                                />
-                                {outfit.likeCount ?? 0}
-                            </span>
-                            <span className="inline-flex items-center gap-1">
-                                <MessageCircle
-                                    aria-hidden="true"
-                                    className="h-3 w-3"
-                                />
-                                {outfit.commentCount ?? 0}
-                            </span>
-                        </span>
+                        {outfit.title}
                     </Link>
-                ) : null}
+                    <span className="inline-flex shrink-0 items-center gap-2 text-[11px] text-text-muted">
+                        <span
+                            className={`inline-flex items-center gap-1 ${
+                                outfit.isLiked ? "text-accent-hover" : ""
+                            }`}
+                        >
+                            <Heart
+                                aria-hidden="true"
+                                className={`h-3.5 w-3.5 ${outfit.isLiked ? "fill-current" : ""}`}
+                            />
+                            {outfit.likeCount ?? 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                            <MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />
+                            {outfit.commentCount ?? 0}
+                        </span>
+                    </span>
+                </div>
                 {saveError && (
                     <span role="status" className="mt-2 block text-[10px] text-red-700">
                         {saveError}
@@ -261,14 +252,14 @@ const CommunityCard = ({ outfit }) => {
 const CommunityCardSkeleton = () => (
     <div
         aria-hidden="true"
-        className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg sm:mb-5"
+        className="group mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg sm:mb-5"
     >
         <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
-        <div className="space-y-3 p-3.5">
-            <div className="h-5 w-4/5 animate-pulse rounded-full bg-bg-subtle" />
-            <div className="flex justify-between">
-                <div className="h-3 w-1/4 animate-pulse rounded-full bg-bg-subtle" />
-                <div className="h-3 w-2/5 animate-pulse rounded-full bg-bg-subtle" />
+        <div className="flex items-center justify-between gap-2 p-3.5">
+            <div className="h-5 w-2/5 animate-pulse rounded-full bg-bg-subtle" />
+            <div className="flex shrink-0 items-center gap-2">
+                <div className="h-3 w-8 animate-pulse rounded-full bg-bg-subtle" />
+                <div className="h-3 w-8 animate-pulse rounded-full bg-bg-subtle" />
             </div>
         </div>
     </div>
@@ -364,9 +355,13 @@ const CommunityDiscover = () => {
             page: 1,
             limit: PAGE_SIZE,
         })
-            .then((data) => {
+            .then(async (data) => {
                 if (cancelled || requestId !== requestIdRef.current) return;
-                setOutfits(data.outfits || []);
+                const pageOutfits = isAuthenticated
+                    ? await attachCommunityInteractionStates(data.outfits || [])
+                    : data.outfits || [];
+                if (cancelled || requestId !== requestIdRef.current) return;
+                setOutfits(pageOutfits);
                 setHasMore(Boolean(data.pagination?.hasMore));
             })
             .catch(() => {
@@ -383,7 +378,7 @@ const CommunityDiscover = () => {
         return () => {
             cancelled = true;
         };
-    }, [query, refreshKey]);
+    }, [isAuthenticated, query, refreshKey]);
 
     const loadMore = useCallback(async () => {
         if (loading || loadingMoreRef.current || !hasMore || error) return;
@@ -400,12 +395,16 @@ const CommunityDiscover = () => {
                 limit: PAGE_SIZE,
             });
             if (requestId !== requestIdRef.current) return;
+            const pageOutfits = isAuthenticated
+                ? await attachCommunityInteractionStates(data.outfits || [])
+                : data.outfits || [];
+            if (requestId !== requestIdRef.current) return;
 
             setOutfits((current) => {
                 const knownIds = new Set(current.map((outfit) => outfit._id));
                 return [
                     ...current,
-                    ...(data.outfits || []).filter(
+                    ...pageOutfits.filter(
                         (outfit) => !knownIds.has(outfit._id),
                     ),
                 ];
@@ -425,6 +424,7 @@ const CommunityDiscover = () => {
     }, [
         error,
         hasMore,
+        isAuthenticated,
         loading,
         page,
         query,
@@ -471,7 +471,7 @@ const CommunityDiscover = () => {
     );
 
     return (
-        <main className="min-h-screen bg-bg pb-16">
+        <main className="min-h-screen bg-bg pb-16 [&_a]:cursor-pointer [&_button]:cursor-pointer">
             <Link
                 to={
                     isAuthenticated && user?.id
@@ -656,7 +656,7 @@ const CommunityDiscover = () => {
                     </div>
 
                     {searchOpen && (
-                        <div className="relative mt-3 lg:fixed lg:left-[18rem] lg:right-[19rem] lg:top-4 lg:z-40 lg:mt-0">
+                        <div className="relative mt-3 lg:fixed lg:left-[calc(50%+3.875rem)] lg:right-auto lg:top-4 lg:z-50 lg:mt-0 lg:w-[min(calc(100vw-38rem),55rem)] lg:-translate-x-1/2">
                             <Search
                                 aria-hidden="true"
                                 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
@@ -674,7 +674,7 @@ const CommunityDiscover = () => {
                     )}
 
                     {filtersOpen && (
-                        <div className="mt-3 rounded-2xl border border-border bg-bg p-3 shadow-[0_12px_36px_rgba(8,28,21,0.08)] sm:p-4 lg:fixed lg:left-[18rem] lg:right-[19rem] lg:top-4 lg:z-40 lg:mt-0">
+                        <div className="mt-3 rounded-2xl border border-border bg-bg p-3 shadow-[0_12px_36px_rgba(8,28,21,0.08)] sm:p-4 lg:fixed lg:left-[calc(50%+3.875rem)] lg:right-auto lg:top-4 lg:z-50 lg:mt-0 lg:w-[min(calc(100vw-38rem),55rem)] lg:-translate-x-1/2">
                             <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                                 <Select
                                     {...selectCommonProps}

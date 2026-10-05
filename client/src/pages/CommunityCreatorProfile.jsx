@@ -4,9 +4,8 @@ import {
     ArrowLeft,
     AlertTriangle,
     Camera,
-    Heart,
     LoaderCircle,
-    MessageCircle,
+    LockKeyhole,
     Pencil,
     Shirt,
     Trash2,
@@ -19,6 +18,7 @@ import {
     getCommunityCreatorProfile,
 } from "../services/communityOutfitService.js";
 import {
+    attachCommunityInteractionStates,
     getSavedCommunityOutfits,
     toggleCommunitySave,
 } from "../services/communityInteractionService.js";
@@ -48,7 +48,7 @@ const OutfitCard = ({
     onUnsave,
     removing,
 }) => (
-    <article className="group relative mb-3 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
+    <article className="group relative mb-3 cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
         <Link
             to={`/community/${outfit._id}`}
             className="block"
@@ -62,32 +62,16 @@ const OutfitCard = ({
                     className="block h-auto w-full transition duration-500 group-hover:scale-[1.025]"
                 />
             </div>
-            <div className="p-3 sm:p-3.5">
-                <h2 className="line-clamp-2 font-display text-lg leading-tight text-text-primary sm:text-xl">
-                    {outfit.title}
-                </h2>
-                {(outfit.outfitType?.name || outfit.occasion?.name) && (
-                    <p className="mt-1.5 truncate text-[11px] text-text-muted">
-                        {[outfit.outfitType?.name, outfit.occasion?.name]
-                            .filter(Boolean)
-                            .join(" · ")}
-                    </p>
-                )}
-                <div className="mt-2.5 flex items-center gap-3 border-t border-border/70 pt-2.5 text-[11px] text-text-muted">
-                    <span className="inline-flex items-center gap-1.5">
-                        <Heart aria-hidden="true" className="h-3.5 w-3.5" />
-                        {outfit.likeCount ?? 0}
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                        <MessageCircle
-                            aria-hidden="true"
-                            className="h-3.5 w-3.5"
-                        />
-                        {outfit.commentCount ?? 0}
-                    </span>
-                </div>
-            </div>
         </Link>
+        {outfit.visibility === "private" && (
+            <span
+                aria-label="Private outfit"
+                title="Private outfit"
+                className="absolute bottom-2.5 left-2.5 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur sm:bottom-3 sm:left-3"
+            >
+                <LockKeyhole aria-hidden="true" className="h-4 w-4" />
+            </span>
+        )}
         {isOwnProfile && (
             <>
             {onEdit && (
@@ -95,7 +79,7 @@ const OutfitCard = ({
                     to={`/community/${outfit._id}/edit`}
                     aria-label={`Edit ${outfit.title}`}
                     title="Edit your outfit"
-                    className="absolute left-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white hover:text-accent-hover sm:left-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                    className="absolute left-2.5 top-2.5 z-10 hidden h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white hover:text-accent-hover sm:left-3 sm:top-3 sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
                 >
                     <Pencil aria-hidden="true" className="h-4 w-4" />
                 </Link>
@@ -118,7 +102,7 @@ const OutfitCard = ({
                         ? "Delete your outfit"
                         : "Remove from saved outfits"
                 }
-                className="absolute right-2.5 top-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white hover:text-red-700 disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+                className="absolute right-2.5 top-2.5 z-10 hidden h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/90 text-text-primary shadow-md backdrop-blur transition hover:scale-105 hover:bg-white hover:text-red-700 disabled:cursor-wait disabled:opacity-60 sm:right-3 sm:top-3 sm:flex sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
             >
                 {onDelete ? (
                     <Trash2
@@ -143,16 +127,12 @@ const OutfitSkeleton = () => (
         className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg"
     >
         <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
-        <div className="space-y-3 p-3.5">
-            <div className="h-5 w-4/5 animate-pulse rounded-full bg-bg-subtle" />
-            <div className="h-3 w-2/5 animate-pulse rounded-full bg-bg-subtle" />
-        </div>
     </div>
 );
 
 const CommunityCreatorProfile = () => {
     const { userId } = useParams();
-    const { user, updateUserInfo } = useAuth();
+    const { user, isAuthenticated, updateUserInfo } = useAuth();
     const isOwnProfile = Boolean(user?.id && user.id === userId);
     const [creator, setCreator] = useState(null);
     const [stats, setStats] = useState({ outfitCount: 0, likeCount: 0 });
@@ -213,11 +193,15 @@ const CommunityCreatorProfile = () => {
         });
 
         getCommunityCreatorProfile(userId, { page: 1, limit: PAGE_SIZE })
-            .then((data) => {
+            .then(async (data) => {
+                if (cancelled || requestId !== requestIdRef.current) return;
+                const creatorOutfits = isAuthenticated
+                    ? await attachCommunityInteractionStates(data.outfits || [])
+                    : data.outfits || [];
                 if (cancelled || requestId !== requestIdRef.current) return;
                 setCreator(data.creator);
                 setStats(data.stats || { outfitCount: 0, likeCount: 0 });
-                setOutfits(data.outfits || []);
+                setOutfits(creatorOutfits);
                 setHasMore(Boolean(data.pagination?.hasMore));
             })
             .catch((error) => {
@@ -240,7 +224,7 @@ const CommunityCreatorProfile = () => {
         return () => {
             cancelled = true;
         };
-    }, [refreshKey, userId]);
+    }, [isAuthenticated, refreshKey, userId]);
 
     useEffect(() => {
         if (!isOwnProfile || activeTab !== "saved" || savedLoaded) {
@@ -257,9 +241,11 @@ const CommunityCreatorProfile = () => {
         });
 
         getSavedCommunityOutfits({ page: 1, limit: PAGE_SIZE })
-            .then((data) => {
+            .then(async (data) => {
                 if (cancelled || requestId !== savedRequestIdRef.current) return;
-                setSavedOutfits(data.outfits || []);
+                const saved = await attachCommunityInteractionStates(data.outfits || []);
+                if (cancelled || requestId !== savedRequestIdRef.current) return;
+                setSavedOutfits(saved);
                 setSavedPage(1);
                 setSavedHasMore(Boolean(data.pagination?.hasMore));
                 setSavedLoaded(true);
@@ -306,12 +292,16 @@ const CommunityCreatorProfile = () => {
                     limit: PAGE_SIZE,
                 });
                 if (requestId !== requestIdRef.current) return;
+                const creatorOutfits = isAuthenticated
+                    ? await attachCommunityInteractionStates(data.outfits || [])
+                    : data.outfits || [];
+                if (requestId !== requestIdRef.current) return;
 
                 setOutfits((current) => {
                     const knownIds = new Set(current.map((outfit) => outfit._id));
                     return [
                         ...current,
-                        ...(data.outfits || []).filter(
+                        ...creatorOutfits.filter(
                             (outfit) => !knownIds.has(outfit._id),
                         ),
                     ];
@@ -332,7 +322,7 @@ const CommunityCreatorProfile = () => {
                 }
             }
         },
-        [hasMore, loading, moreError, page, userId],
+        [hasMore, isAuthenticated, loading, moreError, page, userId],
     );
 
     const loadMoreSaved = useCallback(
@@ -357,11 +347,13 @@ const CommunityCreatorProfile = () => {
                     limit: PAGE_SIZE,
                 });
                 if (requestId !== savedRequestIdRef.current) return;
+                const saved = await attachCommunityInteractionStates(data.outfits || []);
+                if (requestId !== savedRequestIdRef.current) return;
                 setSavedOutfits((current) => {
                     const knownIds = new Set(current.map((outfit) => outfit._id));
                     return [
                         ...current,
-                        ...(data.outfits || []).filter(
+                        ...saved.filter(
                             (outfit) => !knownIds.has(outfit._id),
                         ),
                     ];
@@ -561,7 +553,7 @@ const CommunityCreatorProfile = () => {
         activeTab === "created" ? moreError : savedMoreError;
 
     return (
-        <main className="min-h-screen bg-bg-subtle/45 pb-16">
+        <main className="min-h-screen bg-bg-subtle/45 pb-16 [&_a]:cursor-pointer [&_button]:cursor-pointer">
             {creator && (
                 <PageMeta
                     title={`${name}'s Community Outfits | OOTDIFY`}
@@ -744,16 +736,13 @@ const CommunityCreatorProfile = () => {
                                 role="tab"
                                 aria-selected={activeTab === "created"}
                                 onClick={() => setActiveTab("created")}
-                                className={`min-w-32 rounded-full px-5 py-2.5 text-xs font-semibold transition ${
+                                className={`min-w-32 cursor-pointer rounded-full px-5 py-2.5 text-xs font-semibold transition ${
                                     activeTab === "created"
                                         ? "bg-text-primary text-bg shadow-sm"
                                         : "text-text-secondary hover:text-accent-hover"
                                 }`}
                             >
                                 Created
-                                <span className="ml-1.5 opacity-75">
-                                    {formatCount(stats.outfitCount)}
-                                </span>
                             </button>
                             {isOwnProfile && (
                                 <button
@@ -761,7 +750,7 @@ const CommunityCreatorProfile = () => {
                                     role="tab"
                                     aria-selected={activeTab === "saved"}
                                     onClick={() => setActiveTab("saved")}
-                                    className={`min-w-32 rounded-full px-5 py-2.5 text-xs font-semibold transition ${
+                                    className={`min-w-32 cursor-pointer rounded-full px-5 py-2.5 text-xs font-semibold transition ${
                                         activeTab === "saved"
                                             ? "bg-text-primary text-bg shadow-sm"
                                             : "text-text-secondary hover:text-accent-hover"
@@ -786,9 +775,12 @@ const CommunityCreatorProfile = () => {
                                 aria-hidden="true"
                                 className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4"
                             >
-                                {Array.from({ length: 8 }, (_, index) => (
+                                {Array.from(
+                                    { length: activeTab === "saved" ? 5 : 8 },
+                                    (_, index) => (
                                     <OutfitSkeleton key={index} />
-                                ))}
+                                    ),
+                                )}
                             </div>
                         )}
 
