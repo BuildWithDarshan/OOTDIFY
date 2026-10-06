@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Select from "react-select";
+import Cropper from "react-easy-crop";
+import "react-easy-crop/react-easy-crop.css";
 import {
     ArrowLeft,
     Eye,
@@ -14,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import EmojiPickerButton from "../components/Common/EmojiPickerButton.jsx";
+import { createCroppedImageFile } from "../utils/imageProcessing.js";
 import {
     createCommunityOutfit,
     getCommunityOutfitById,
@@ -21,7 +24,7 @@ import {
 } from "../services/communityOutfitService.js";
 import { getOccasions, getOutfitTypes } from "../services/taxonomyService.js";
 
-const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const HEIC_IMAGE_TYPES = ["image/heic", "image/heif"];
 const MAX_TAGS = 10;
@@ -116,6 +119,12 @@ const CreateCommunityOutfit = () => {
     const [outfitLoadError, setOutfitLoadError] = useState("");
     const [imageError, setImageError] = useState("");
     const [imageProcessing, setImageProcessing] = useState(false);
+    const [cropSource, setCropSource] = useState("");
+    const [cropFileName, setCropFileName] = useState("");
+    const [cropPosition, setCropPosition] = useState({ x: 0, y: 0 });
+    const [cropZoom, setCropZoom] = useState(1);
+    const [cropAspect, setCropAspect] = useState(1);
+    const [cropPixels, setCropPixels] = useState(null);
     const [title, setTitle] = useState("");
     const titleInputRef = useRef(null);
     const [gender, setGender] = useState(null);
@@ -145,6 +154,12 @@ const CreateCommunityOutfit = () => {
             }
         };
     }, [imagePreview]);
+
+    useEffect(() => {
+        return () => {
+            if (cropSource) URL.revokeObjectURL(cropSource);
+        };
+    }, [cropSource]);
 
     useEffect(() => {
         let cancelled = false;
@@ -260,6 +275,10 @@ const CreateCommunityOutfit = () => {
         setImageError("");
 
         if (!selectedImage) return;
+        if (selectedImage.size > MAX_IMAGE_SIZE) {
+            setImageError("Choose an image that is 8 MB or smaller.");
+            return;
+        }
 
         const isHeicImage =
             HEIC_IMAGE_TYPES.includes(selectedImage.type.toLowerCase()) ||
@@ -281,15 +300,10 @@ const CreateCommunityOutfit = () => {
                     [convertedBlob],
                     selectedImage.name.replace(/\.(heic|heif)$/i, "") +
                         ".jpg",
-                    { type: "image/jpeg", lastModified: Date.now() },
+                    { type: "image/jpeg", lastModified: selectedImage.lastModified },
                 );
 
-                if (jpegFile.size > MAX_IMAGE_SIZE) {
-                    setImageError("The converted image must be 4 MB or smaller.");
-                    return;
-                }
-
-                setImage(jpegFile);
+                openImageCropper(jpegFile);
             } catch (error) {
                 setImageError(
                     error.message ||
@@ -306,12 +320,36 @@ const CreateCommunityOutfit = () => {
             return;
         }
 
-        if (selectedImage.size > MAX_IMAGE_SIZE) {
-            setImageError("The image must be 4 MB or smaller.");
-            return;
-        }
+        openImageCropper(selectedImage);
+    };
 
-        setImage(selectedImage);
+    const openImageCropper = (file) => {
+        setCropPosition({ x: 0, y: 0 });
+        setCropZoom(1);
+        setCropPixels(null);
+        setCropFileName(file.name);
+        setCropSource(URL.createObjectURL(file));
+    };
+
+    const handleCropSave = async () => {
+        if (!cropSource || !cropPixels || imageProcessing) return;
+        setImageProcessing(true);
+        setImageError("");
+        try {
+            const croppedImage = await createCroppedImageFile(
+                cropSource,
+                cropPixels,
+                cropFileName,
+            );
+            setImage(croppedImage);
+            setCropSource("");
+        } catch (error) {
+            setImageError(
+                error.message || "The cropped image could not be prepared.",
+            );
+        } finally {
+            setImageProcessing(false);
+        }
     };
 
     const addTag = () => {
@@ -357,8 +395,8 @@ const CreateCommunityOutfit = () => {
         event.preventDefault();
         setSubmitError("");
 
-        if (imageProcessing) {
-            setSubmitError("Wait for the HEIC photo to finish converting.");
+        if (imageProcessing || cropSource) {
+            setSubmitError("Finish preparing the outfit photo before posting.");
             return;
         }
 
@@ -580,7 +618,7 @@ const CreateCommunityOutfit = () => {
                         </div>
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <p className="text-xs text-text-secondary">
-                                    JPG, PNG, WEBP, HEIC, or HEIF <span className="mx-1 text-text-muted">·</span> Up to 4 MB
+                                    JPG, PNG, WEBP, HEIC, or HEIF <span className="mx-1 text-text-muted">·</span> Up to 8 MB
                             </p>
                             {image && (
                                 <button
@@ -611,7 +649,7 @@ const CreateCommunityOutfit = () => {
                                         className="mb-3 h-8 w-8 animate-spin text-accent"
                                     />
                                     <span className="text-sm font-medium text-text-primary">
-                                        Converting HEIC photo...
+                                        Preparing image...
                                     </span>
                                 </span>
                             ) : imagePreview ? (
@@ -955,6 +993,106 @@ const CreateCommunityOutfit = () => {
                     </section>
                 </form>
             </div>
+            {cropSource && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 p-3 backdrop-blur-sm sm:p-6"
+                    role="presentation"
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget && !imageProcessing) {
+                            setCropSource("");
+                        }
+                    }}
+                >
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="outfit-crop-title"
+                        className="w-full max-w-3xl overflow-hidden rounded-3xl border border-border bg-bg shadow-2xl"
+                    >
+                        <header className="flex items-center justify-between gap-4 border-b border-border px-4 py-3 sm:px-6">
+                            <div>
+                                <h2
+                                    id="outfit-crop-title"
+                                    className="font-display text-2xl text-text-primary"
+                                >
+                                    Adjust your photo
+                                </h2>
+                                <p className="mt-0.5 text-xs text-text-muted">
+                                    Drag to reposition and zoom to crop. The original proportions are preserved.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setCropSource("")}
+                                disabled={imageProcessing}
+                                aria-label="Cancel photo adjustment"
+                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition hover:bg-bg-subtle disabled:opacity-50"
+                            >
+                                <X aria-hidden="true" className="h-4 w-4" />
+                            </button>
+                        </header>
+                        <div className="relative h-[min(58dvh,34rem)] w-full bg-black">
+                            <Cropper
+                                image={cropSource}
+                                crop={cropPosition}
+                                zoom={cropZoom}
+                                aspect={cropAspect}
+                                onCropChange={setCropPosition}
+                                onZoomChange={setCropZoom}
+                                onMediaLoaded={(media) =>
+                                    setCropAspect(
+                                        media.naturalWidth / media.naturalHeight,
+                                    )
+                                }
+                                onCropComplete={(_, pixels) =>
+                                    setCropPixels(pixels)
+                                }
+                            />
+                        </div>
+                        <div className="flex items-center gap-3 px-4 pt-4 sm:px-6">
+                            <span className="text-xs font-medium text-text-secondary">
+                                Zoom
+                            </span>
+                            <input
+                                type="range"
+                                min="1"
+                                max="3"
+                                step="0.01"
+                                value={cropZoom}
+                                onChange={(event) =>
+                                    setCropZoom(Number(event.target.value))
+                                }
+                                aria-label="Zoom photo"
+                                className="h-2 flex-1 cursor-pointer accent-[var(--color-accent)]"
+                            />
+                        </div>
+                        <footer className="flex justify-end gap-2 px-4 py-4 sm:px-6">
+                            <button
+                                type="button"
+                                onClick={() => setCropSource("")}
+                                disabled={imageProcessing}
+                                className="min-h-10 rounded-full border border-border px-4 text-sm font-medium text-text-secondary transition hover:border-accent hover:text-accent-hover disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCropSave}
+                                disabled={!cropPixels || imageProcessing}
+                                className="inline-flex min-h-10 items-center gap-2 rounded-full bg-text-primary px-5 text-sm font-semibold text-bg transition hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+                            >
+                                {imageProcessing && (
+                                    <LoaderCircle
+                                        aria-hidden="true"
+                                        className="h-4 w-4 animate-spin"
+                                    />
+                                )}
+                                Use photo
+                            </button>
+                        </footer>
+                    </section>
+                </div>
+            )}
         </main>
     );
 };

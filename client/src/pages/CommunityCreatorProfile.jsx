@@ -24,6 +24,7 @@ import {
 } from "../services/communityInteractionService.js";
 import { uploadProfilePicture } from "../services/userService.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { optimizeImageForUpload } from "../utils/imageProcessing.js";
 
 const PAGE_SIZE = 20;
 
@@ -448,25 +449,27 @@ const CommunityCreatorProfile = () => {
             setPictureError("Choose a JPG, PNG, or WEBP image.");
             return;
         }
-        if (image.size > 4 * 1024 * 1024) {
-            setPictureError("The profile picture must be 4 MB or smaller.");
+        if (image.size > 8 * 1024 * 1024) {
+            setPictureError("Choose a profile picture that is 8 MB or smaller.");
             return;
         }
 
-        const previewUrl = URL.createObjectURL(image);
-        setPicturePreview(previewUrl);
         setPictureUploading(true);
+        let previewUrl = "";
 
         try {
-            const data = await uploadProfilePicture(image);
+            const optimizedImage = await optimizeImageForUpload(image);
+            previewUrl = URL.createObjectURL(optimizedImage);
+            setPicturePreview(previewUrl);
+            const data = await uploadProfilePicture(optimizedImage);
             setCreator((current) =>
                 current ? { ...current, profilePicture: data.user.profilePicture } : current,
             );
             updateUserInfo({ profilePicture: data.user.profilePicture });
-            URL.revokeObjectURL(previewUrl);
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPicturePreview("");
         } catch (error) {
-            URL.revokeObjectURL(previewUrl);
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
             setPicturePreview("");
             setPictureError(
                 error.response?.data?.message ||

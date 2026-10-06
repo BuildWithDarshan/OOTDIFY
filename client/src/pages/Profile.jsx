@@ -20,6 +20,7 @@ import {
   updateProfile,
   uploadProfilePicture,
 } from "../services/userService.js";
+import { optimizeImageForUpload } from "../utils/imageProcessing.js";
 
 const fieldShellClass =
   "flex w-full min-w-0 items-center overflow-hidden rounded-xl border border-border bg-bg transition-all duration-300 hover:border-border-strong focus-within:border-accent focus-within:ring-4 focus-within:ring-accent/10";
@@ -64,22 +65,24 @@ const ProfileContent = ({ user, updateUserInfo }) => {
       setPictureError("Choose a JPG, PNG, or WEBP image.");
       return;
     }
-    if (image.size > 4 * 1024 * 1024) {
-      setPictureError("The profile picture must be 4 MB or smaller.");
+    if (image.size > 8 * 1024 * 1024) {
+      setPictureError("Choose a profile picture that is 8 MB or smaller.");
       return;
     }
 
-    const previewUrl = URL.createObjectURL(image);
-    setPicturePreview(previewUrl);
     setPictureUploading(true);
+    let previewUrl = "";
 
     try {
-      const data = await uploadProfilePicture(image);
+      const optimizedImage = await optimizeImageForUpload(image);
+      previewUrl = URL.createObjectURL(optimizedImage);
+      setPicturePreview(previewUrl);
+      const data = await uploadProfilePicture(optimizedImage);
       updateUserInfo({ profilePicture: data.user.profilePicture });
       URL.revokeObjectURL(previewUrl);
       setPicturePreview("");
     } catch (error) {
-      URL.revokeObjectURL(previewUrl);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPicturePreview("");
       setPictureError(
         error.response?.data?.message ||
@@ -242,7 +245,7 @@ const ProfileContent = ({ user, updateUserInfo }) => {
               )}
               {!pictureError && (
                 <p role="status" className="invisible mt-2 text-xs text-text-muted">
-                  Upload a JPG, PNG, or WEBP image up to 4 MB.
+                  Upload a JPG, PNG, or WEBP image up to 8 MB. It will be optimized before upload.
                 </p>
               )}
             </div>

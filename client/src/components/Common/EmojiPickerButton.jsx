@@ -28,7 +28,7 @@ const EmojiPickerButton = ({ inputRef, maxLength, onChange, value }) => {
     };
 
     return (
-        <span className="relative inline-flex">
+        <span className="relative hidden sm:inline-flex">
             <button
                 type="button"
                 aria-label="Add emoji"
