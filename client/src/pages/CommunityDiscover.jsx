@@ -113,6 +113,39 @@ const selectCommonProps = {
     noOptionsMessage: () => "No matching options",
 };
 
+const MasonryGridItem = ({ children }) => {
+    const itemRef = useRef(null);
+
+    useEffect(() => {
+        const item = itemRef.current;
+        const grid = item?.parentElement;
+        const content = item?.firstElementChild;
+        if (!item || !grid || !content) return undefined;
+
+        const updateRowSpan = () => {
+            const styles = window.getComputedStyle(grid);
+            const rowHeight = Number.parseFloat(styles.gridAutoRows) || 8;
+            const rowGap = Number.parseFloat(styles.rowGap) || 0;
+            const contentHeight = content.getBoundingClientRect().height;
+            item.style.gridRowEnd = `span ${Math.max(
+                1,
+                Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)),
+            )}`;
+        };
+        const observer = new ResizeObserver(updateRowSpan);
+        observer.observe(content);
+        updateRowSpan();
+
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div ref={itemRef} className="self-start" style={{ gridRowEnd: "span 1" }}>
+            {children}
+        </div>
+    );
+};
+
 const CommunityCard = ({ outfit }) => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
@@ -147,7 +180,7 @@ const CommunityCard = ({ outfit }) => {
     };
 
     return (
-        <article className="group relative mb-3 cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
+        <article className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)]">
             <Link
                 to={`/community/${outfit._id}`}
                 className="block"
@@ -252,7 +285,7 @@ const CommunityCard = ({ outfit }) => {
 const CommunityCardSkeleton = () => (
     <div
         aria-hidden="true"
-        className="group mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg sm:mb-5"
+        className="group overflow-hidden rounded-2xl border border-border/70 bg-bg"
     >
         <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
         <div className="flex items-center justify-between gap-2 p-3.5">
@@ -753,10 +786,12 @@ const CommunityDiscover = () => {
                     <div
                         role="status"
                         aria-label="Loading community outfits"
-                        className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4"
+                        className="grid grid-cols-2 [grid-auto-rows:8px] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5"
                     >
                         {Array.from({ length: 5 }, (_, index) => (
-                            <CommunityCardSkeleton key={index} />
+                            <MasonryGridItem key={index}>
+                                <CommunityCardSkeleton />
+                            </MasonryGridItem>
                         ))}
                     </div>
                 )}
@@ -803,14 +838,18 @@ const CommunityDiscover = () => {
                 {outfits.length > 0 && (
                     <div
                         aria-label="Community outfit results"
-                        className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4"
+                        className="grid grid-cols-2 [grid-auto-rows:8px] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5"
                     >
                         {outfits.map((outfit) => (
-                            <CommunityCard key={outfit._id} outfit={outfit} />
+                            <MasonryGridItem key={outfit._id}>
+                                <CommunityCard outfit={outfit} />
+                            </MasonryGridItem>
                         ))}
                         {loadingMore &&
                             Array.from({ length: 5 }, (_, index) => (
-                                <CommunityCardSkeleton key={`loading-${index}`} />
+                                <MasonryGridItem key={`loading-${index}`}>
+                                    <CommunityCardSkeleton />
+                                </MasonryGridItem>
                             ))}
                     </div>
                 )}

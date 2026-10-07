@@ -1334,7 +1334,7 @@ const CommunityOutfitDetails = () => {
                                             <CommunityOutfitReport
                                                 outfit={outfit}
                                                 menuItem
-                                                onOpen={() => setOutfitMenuOpen(false)}
+                                                onSubmitted={() => setOutfitMenuOpen(false)}
                                             />
                                         )}
                                     </div>

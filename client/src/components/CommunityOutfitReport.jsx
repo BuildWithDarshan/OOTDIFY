@@ -18,7 +18,7 @@ const CommunityOutfitReport = ({
     compact = false,
     iconOnly = false,
     menuItem = false,
-    onOpen,
+    onSubmitted,
 }) => {
     const navigate = useNavigate();
     const { user, isAuthenticated } = useAuth();
@@ -49,7 +49,6 @@ const CommunityOutfitReport = ({
             return;
         }
         setError("");
-        onOpen?.();
         setIsOpen(true);
     };
 
@@ -66,6 +65,7 @@ const CommunityOutfitReport = ({
             });
             setSubmitted(true);
             setIsOpen(false);
+            onSubmitted?.();
         } catch (requestError) {
             setError(
                 requestError.response?.data?.message ||
