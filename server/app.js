@@ -19,6 +19,7 @@ import connectDB from "./config/db.js";
 import communityOutfitRouter from "./routes/communityOutfitRoutes.js";
 import communityInteractionRouter from "./routes/communityInteractionRoutes.js";
 import communityReportRouter from "./routes/communityReportRoutes.js";
+import outfitAnalyzerRoutes from "./routes/outfitAnalyzerRoutes.js";
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || "")
@@ -92,6 +93,8 @@ app.use('/api/community-outfits', communityInteractionRouter);
 app.use('/api/community-outfits', communityOutfitRouter);
 
 app.use('/api/community-reports', communityReportRouter);
+
+app.use("/api/outfit-analyzer",outfitAnalyzerRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

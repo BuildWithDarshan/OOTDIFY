@@ -5,6 +5,9 @@ import { useAdminAuth } from "../context/AdminAuthContext.jsx";
 const navItems = [
     { to: "/dashboard", label: "Dashboard" },
     { to: "/outfits", label: "Outfits" },
+    ...(import.meta.env.VITE_ENABLE_OUTFIT_ANALYZER === "true"
+        ? [{ to: "/outfit-analyzer", label: "Outfit Analyzer" }]
+        : []),
     { to: "/items", label: "Items" },
     { to: "/trends", label: "Trends" },
     { to: "/style-tips", label: "Style Tips" },
