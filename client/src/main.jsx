@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/react'
 import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
+import { Analytics } from '@vercel/analytics/react'
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -13,6 +14,7 @@ if (!clerkPublishableKey) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <Analytics />
     <ClerkProvider
       publishableKey={clerkPublishableKey}
       signInUrl="/login"
