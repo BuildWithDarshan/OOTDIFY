@@ -1,34 +1,115 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { analyzeOutfit } from "../services/outfitAnalyzerService.js";
+import { SearchOutfitCatalog } from "../services/outfitCatalogSearchService.js";
+import { getRetailerSearchLinks } from "../services/retailerSearchLinksService.js";
 
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
+const MAX_GARMENTS = 12;
+const MAX_QUERIES = 5;
 
 const fieldClass =
     "w-full border border-border rounded-lg px-3 py-2 text-text-primary bg-bg focus:outline-none focus:border-accent";
 
+function safeProductUrl(value) {
+    try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+    } catch {
+        return null;
+    }
+}
+
+const ALLOWED_SUBTYPES_BY_TYPE = {
+    top: [
+        "t-shirt",
+        "shirt",
+        "button-up-shirt",
+        "polo-shirt",
+        "tank-top",
+        "sweater",
+        "hoodie",
+        "sweatshirt",
+        "kurta",
+        "blouse",
+        "crop-top",
+    ],
+    bottom: [
+        "jeans",
+        "trousers",
+        "pants",
+        "chinos",
+        "shorts",
+        "joggers",
+        "cargo-pants",
+        "wide-leg-jeans",
+        "skirt",
+        "leggings",
+        "wide-leg-trousers",
+        "wide-leg-pants",
+    ],
+    footwear: [
+        "sneakers",
+        "boots",
+        "loafers",
+        "sandals",
+        "formal-shoes",
+        "slides",
+    ],
+    outerwear: [
+        "jacket",
+        "blazer",
+        "coat",
+        "bomber-jacket",
+        "denim-jacket",
+        "cardigan",
+        "overshirt",
+        "open-shirt-layer",
+        "shirt",
+        "button-up-shirt",
+    ],
+};
+
+const ITEM_TYPES = ["top", "bottom", "footwear", "outerwear"];
+
 const OutfitAnalyzer = () => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
+    const previewUrl = useRef("");
+    const discoveryRevision = useRef(0);
     const [draft, setDraft] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
+    const [catalogResults, setCatalogResults] = useState({});
+    const [selectedCatalogItems, setSelectedCatalogItems] = useState({});
+    const [catalogSearching, setCatalogSearching] = useState(false);
+    const [catalogError, setCatalogError] = useState("");
+    const [retailerLinkResults, setRetailerLinkResults] = useState({});
+    const [retailerLinksLoading, setRetailerLinksLoading] = useState({});
+    const [retailerLinksError, setRetailerLinksError] = useState("");
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        if (!imageFile) {
-            setImagePreview("");
-            return undefined;
-        }
+    useEffect(() => () => {
+        if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    }, []);
 
-        const objectUrl = URL.createObjectURL(imageFile);
-        setImagePreview(objectUrl);
-
-        return () => URL.revokeObjectURL(objectUrl);
-    }, [imageFile]);
+    const invalidateDiscovery = () => {
+        discoveryRevision.current += 1;
+        setCatalogResults({});
+        setSelectedCatalogItems({});
+        setCatalogSearching(false);
+        setCatalogError("");
+        setRetailerLinkResults({});
+        setRetailerLinksLoading({});
+        setRetailerLinksError("");
+    };
 
     const handleImageChange = (event) => {
         const file = event.target.files?.[0] ?? null;
+        if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+        previewUrl.current = "";
+        setImagePreview("");
         setError("");
         setDraft(null);
+        invalidateDiscovery();
 
         if (file && file.size > MAX_IMAGE_SIZE) {
             setImageFile(null);
@@ -38,6 +119,10 @@ const OutfitAnalyzer = () => {
         }
 
         setImageFile(file);
+        if (file) {
+            previewUrl.current = URL.createObjectURL(file);
+            setImagePreview(previewUrl.current);
+        }
     };
 
     const handleAnalyze = async (event) => {
@@ -62,6 +147,7 @@ const OutfitAnalyzer = () => {
             }
 
             setDraft(response.data);
+            invalidateDiscovery();
         } catch (requestError) {
             setError(
                 requestError.response?.data?.message ||
@@ -74,6 +160,7 @@ const OutfitAnalyzer = () => {
     };
 
     const updateOutfitField = (field, value) => {
+        if (field === "genderSuggestion") invalidateDiscovery();
         setDraft((current) => ({
             ...current,
             outfitDraft: {
@@ -84,6 +171,7 @@ const OutfitAnalyzer = () => {
     };
 
     const updateItemField = (index, field, value) => {
+        invalidateDiscovery();
         setDraft((current) => ({
             ...current,
             itemSuggestions: current.itemSuggestions.map((item, itemIndex) =>
@@ -92,7 +180,71 @@ const OutfitAnalyzer = () => {
         }));
     };
 
+    const updateItemType = (index, itemType) => {
+    invalidateDiscovery();
+    setDraft((current) => ({
+        ...current,
+        itemSuggestions: current.itemSuggestions.map((item, itemIndex) =>
+            itemIndex === index
+                ? {
+                      ...item,
+                      itemType,
+                      itemSubType: ALLOWED_SUBTYPES_BY_TYPE[itemType][0],
+                  }
+                : item
+        ),
+    }));
+};
+
+   const updateItemSubType = (index, itemSubType) => {
+    updateItemField(index, "itemSubType", itemSubType);
+};
+
+const addGarment = () => {
+    if (draft.itemSuggestions.length >= MAX_GARMENTS) return;
+    invalidateDiscovery();
+    setDraft((current) => ({
+        ...current,
+        itemSuggestions: [
+            ...current.itemSuggestions,
+            {
+                name: "New T-Shirt",
+                brand: null,
+                genderSuggestion:
+                    current.outfitDraft.genderSuggestion ?? null,
+                itemType: "top",
+                itemSubType: "t-shirt",
+                visualAnalysis: {
+                    colors: [],
+                    visualDescription: "",
+                    fit: null,
+                    pattern: null,
+                },
+                searchQueries: ["t-shirt", "casual t-shirt"],
+                isWardrobeEssential: false,
+                missingRequiredItemFields: [
+                    "image",
+                    "price",
+                    "referralLink",
+                    "shoppingSite",
+                ],
+            },
+        ],
+    }));
+};
+
+const removeGarment = (index) => {
+      invalidateDiscovery();
+      setDraft((current) => ({
+          ...current,
+          itemSuggestions: current.itemSuggestions.filter(
+              (_, itemIndex) => itemIndex !== index
+          ),
+      }));
+  };
+
     const updateVisualField = (index, field, value) => {
+        invalidateDiscovery();
         setDraft((current) => ({
             ...current,
             itemSuggestions: current.itemSuggestions.map((item, itemIndex) =>
@@ -121,6 +273,7 @@ const OutfitAnalyzer = () => {
     };
 
     const updateSearchQuery = (itemIndex, queryIndex, value) => {
+        invalidateDiscovery();
         setDraft((current) => ({
             ...current,
             itemSuggestions: current.itemSuggestions.map((item, index) => {
@@ -133,6 +286,155 @@ const OutfitAnalyzer = () => {
             }),
         }));
     };
+
+    const addSearchQuery = (itemIndex) => {
+        invalidateDiscovery();
+        setDraft((current) => ({
+            ...current,
+            itemSuggestions: current.itemSuggestions.map((item, index) =>
+                index === itemIndex && item.searchQueries.length < MAX_QUERIES
+                    ? { ...item, searchQueries: [...item.searchQueries, ""] }
+                    : item
+            ),
+        }));
+    };
+
+    const removeSearchQuery = (itemIndex, queryIndex) => {
+        invalidateDiscovery();
+        setDraft((current) => ({
+            ...current,
+            itemSuggestions: current.itemSuggestions.map((item, index) =>
+                index === itemIndex
+                    ? { ...item, searchQueries: item.searchQueries.filter((_, i) => i !== queryIndex) }
+                    : item
+            ),
+        }));
+    };
+
+    const buildGarmentPayload = (item) => {
+      const gender =
+          item.genderSuggestion ||
+          draft?.outfitDraft?.genderSuggestion ||
+          null;
+      return {
+          itemType: item.itemType,
+          itemSubType: item.itemSubType,
+          ...(gender === "men" || gender === "women" ? { gender } : {}),
+          colors: item.visualAnalysis?.colors ?? [],
+          name: item.name || undefined,
+          fit: item.visualAnalysis?.fit || undefined,
+          pattern: item.visualAnalysis?.pattern || undefined,
+          visualDescription: item.visualAnalysis?.visualDescription || undefined,
+          searchQueries: (item.searchQueries ?? [])
+              .map((query) => query.trim())
+              .filter(Boolean)
+              .slice(0, 5),
+      };
+  };
+
+  const handleSearchCatalog = async (indexes) => {
+      if (!draft?.itemSuggestions?.length) return;
+      const missingColor = indexes.find((index) =>
+          !draft.itemSuggestions[index].visualAnalysis?.colors?.length
+      );
+      if (missingColor !== undefined) {
+          setCatalogError(`Add a visible color for garment ${missingColor + 1} before searching the catalog.`);
+          return;
+      }
+      const revision = discoveryRevision.current;
+      setCatalogError("");
+      setCatalogSearching(true);
+      setCatalogResults((current) => Object.fromEntries(
+          Object.entries(current).filter(([key]) => !indexes.includes(Number(key)))
+      ));
+      setSelectedCatalogItems((current) => Object.fromEntries(
+          Object.entries(current).filter(([key]) => !indexes.includes(Number(key)))
+      ));
+      try {
+          const garments = indexes.map((index) =>
+              buildGarmentPayload(draft.itemSuggestions[index])
+          );
+          const response = await SearchOutfitCatalog(garments);
+          if (!response.success || !Array.isArray(response.results)) {
+              throw new Error("Catalog search returned an unexpected response.");
+          }
+          if (revision !== discoveryRevision.current) return;
+          setCatalogResults((current) => {
+              const next = { ...current };
+              response.results.forEach((result) => {
+                  const originalIndex = indexes[result.garmentIndex];
+                  next[originalIndex] = result.matches ?? [];
+              });
+              return next;
+          });
+      } catch (requestError) {
+          if (revision !== discoveryRevision.current) return;
+          setCatalogError(
+              requestError.response?.data?.message ||
+                  requestError.message ||
+                  "Failed to search the item catalog."
+          );
+      } finally {
+          if (revision === discoveryRevision.current) setCatalogSearching(false);
+      }
+  };
+  const searchAllGarments = () => {
+      const indexes = draft.itemSuggestions.map((_, index) => index);
+      handleSearchCatalog(indexes);
+  };
+  const searchOneGarment = (index) => {
+      handleSearchCatalog([index]);
+  };
+
+  const loadRetailerSearchLinks = async (index) => {
+      const item = draft?.itemSuggestions?.[index];
+      if (!item) return;
+
+      const queries = (item.searchQueries ?? [])
+          .map((query) => query.trim())
+          .filter(Boolean)
+          .slice(0, 5);
+
+      if (queries.length === 0) {
+          setRetailerLinksError(
+              "Add at least one search query before opening retailer searches."
+          );
+          return;
+      }
+
+      setRetailerLinksError("");
+      const revision = discoveryRevision.current;
+      setRetailerLinksLoading((current) => ({ ...current, [index]: true }));
+
+      try {
+          const response = await getRetailerSearchLinks({ queries });
+
+          if (!response.success || !Array.isArray(response.results)) {
+              throw new Error(
+                  "Retailer search links returned an unexpected response."
+              );
+          }
+
+          if (revision !== discoveryRevision.current) return;
+
+          setRetailerLinkResults((current) => ({
+              ...current,
+              [index]: response.results,
+          }));
+      } catch (requestError) {
+          if (revision !== discoveryRevision.current) return;
+          setRetailerLinksError(
+              requestError.response?.data?.message ||
+                  requestError.message ||
+                  "Failed to load retailer search links."
+          );
+      } finally {
+          if (revision === discoveryRevision.current) setRetailerLinksLoading((current) => ({
+              ...current,
+              [index]: false,
+          }));
+      }
+  };
 
     return (
         <div className="max-w-5xl">
@@ -324,23 +626,93 @@ const OutfitAnalyzer = () => {
                     </div>
 
                     <div className="space-y-4">
-                        <h3 className="font-display text-xl text-text-primary">
-                            Suggested Items ({draft.itemSuggestions.length})
-                        </h3>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+      <h3 className="font-display text-xl text-text-primary">
+          Suggested Items ({draft.itemSuggestions.length})
+      </h3>
+      <div className="flex flex-wrap gap-2">
+          <button
+              type="button"
+              onClick={searchAllGarments}
+              disabled={catalogSearching || draft.itemSuggestions.length === 0}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-on-accent hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          >
+              {catalogSearching ? "Searching catalog..." : "Search catalog"}
+          </button>
+          <button
+              type="button"
+              onClick={addGarment}
+              disabled={draft.itemSuggestions.length >= MAX_GARMENTS}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+          >
+              + Add Garment ({draft.itemSuggestions.length}/{MAX_GARMENTS})
+          </button>
+      </div>
+  </div>
+  {catalogError && (
+      <p role="alert" className="rounded-lg bg-red-500 px-4 py-2 text-sm text-white">
+          {catalogError}
+      </p>
+  )}
+  {retailerLinksError && (
+      <p role="alert" className="rounded-lg bg-red-500 px-4 py-2 text-sm text-white">
+          {retailerLinksError}
+      </p>
+  )}
 
                         {draft.itemSuggestions.map((item, index) => (
                             <article
                                 key={`${item.itemType}-${item.itemSubType}-${index}`}
                                 className="space-y-4 rounded-xl border border-border bg-bg p-4 sm:p-6"
                             >
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="rounded-full bg-accent-subtle px-3 py-1 text-xs font-medium text-accent-hover">
-                                        {item.itemType}
-                                    </span>
-                                    <span className="text-xs text-text-secondary">
-                                        {item.itemSubType}
-                                    </span>
-                                </div>
+                                <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_1fr_auto]">
+    <div>
+        <label className="mb-1 block text-sm text-text-secondary">
+            Category
+        </label>
+        <select
+            value={item.itemType}
+            onChange={(event) =>
+                updateItemType(index, event.target.value)
+            }
+            className={fieldClass}
+        >
+            {ITEM_TYPES.map((type) => (
+                <option key={type} value={type}>
+                    {type}
+                </option>
+            ))}
+        </select>
+    </div>
+
+    <div>
+        <label className="mb-1 block text-sm text-text-secondary">
+            Subtype
+        </label>
+        <select
+            value={item.itemSubType}
+            onChange={(event) =>
+                updateItemSubType(index, event.target.value)
+            }
+            className={fieldClass}
+        >
+            {ALLOWED_SUBTYPES_BY_TYPE[item.itemType].map((subtype) => (
+                <option key={subtype} value={subtype}>
+                    {subtype.replaceAll("-", " ")}
+                </option>
+            ))}
+        </select>
+    </div>
+
+    <button
+        type="button"
+        onClick={() => removeGarment(index)}
+        className="rounded-lg border border-border px-4 py-2 text-sm text-red-600 hover:bg-bg-subtle"
+        aria-label={`Remove ${item.name || "garment"}`}
+    >
+        Remove
+    </button>
+</div>
 
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
@@ -405,20 +777,244 @@ const OutfitAnalyzer = () => {
                                             <label className="mb-1 block text-sm text-text-secondary">
                                                 Search query {queryIndex + 1}
                                             </label>
-                                            <input
-                                                value={query}
-                                                onChange={(event) =>
-                                                    updateSearchQuery(
-                                                        index,
-                                                        queryIndex,
-                                                        event.target.value
-                                                    )
-                                                }
-                                                className={fieldClass}
-                                            />
+                                            <div className="flex gap-2">
+                                                <input
+                                                    value={query}
+                                                    maxLength={120}
+                                                    onChange={(event) =>
+                                                        updateSearchQuery(index, queryIndex, event.target.value)
+                                                    }
+                                                    className={fieldClass}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeSearchQuery(index, queryIndex)}
+                                                    className="rounded-lg border border-border px-3 text-sm text-red-600 hover:bg-bg-subtle"
+                                                    aria-label={`Remove search query ${queryIndex + 1}`}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => addSearchQuery(index)}
+                                    disabled={item.searchQueries.length >= MAX_QUERIES}
+                                    className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-primary hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    + Add search query
+                                </button>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => searchOneGarment(index)}
+                                        disabled={catalogSearching}
+                                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        Find in catalog
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            loadRetailerSearchLinks(index)
+                                        }
+                                        disabled={Boolean(
+                                            retailerLinksLoading[index]
+                                        )}
+                                        className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-subtle disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {retailerLinksLoading[index]
+                                            ? "Loading retailer links..."
+                                            : "Open retailer searches"}
+                                    </button>
+                                </div>
+
+  {catalogResults[index] && (
+      <div className="space-y-3 border-t border-border pt-4">
+          <h4 className="text-sm font-medium text-text-primary">
+              From OOTDIFY catalog
+          </h4>
+          {catalogResults[index].length === 0 ? (
+              <p className="text-sm text-text-muted">No catalog item matches this garment type and visible color.</p>
+          ) : (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {catalogResults[index].map((match) => {
+                      const selectedId = selectedCatalogItems[index]?._id;
+                      const isSelected = selectedId === match._id;
+                      return (
+                          <li key={match._id}>
+                              <button
+                                  type="button"
+                                  onClick={() =>
+                                      setSelectedCatalogItems((current) => ({
+                                          ...current,
+                                          [index]: match,
+                                      }))
+                                  }
+                                  aria-pressed={isSelected}
+                                  className={`flex w-full gap-3 rounded-lg border p-3 text-left ${
+                                      isSelected
+                                          ? "border-accent bg-bg-subtle"
+                                          : "border-border hover:bg-bg-subtle"
+                                  }`}
+                              >
+                                  {match.image?.url ? (
+                                      <img
+                                          src={match.image.url}
+                                          alt={match.name}
+                                          className="h-16 w-16 rounded object-cover"
+                                      />
+                                  ) : (
+                                      <div className="flex h-16 w-16 items-center justify-center rounded bg-bg-subtle text-xs text-text-muted">
+                                          No image
+                                      </div>
+                                  )}
+                                  <div className="min-w-0">
+                                      <p className="truncate text-sm font-medium text-text-primary">
+                                          {match.name}
+                                      </p>
+                                      <p className="text-xs text-text-secondary">
+                                          {[match.brand, match.shoppingSite]
+                                              .filter(Boolean)
+                                              .join(" · ") || "—"}
+                                      </p>
+                                      <p className="text-xs text-text-muted">
+                                          {match.price != null
+                                              ? `₹${match.price}`
+                                              : "Price unavailable"}
+                                      </p>
+                                      <p className="text-xs text-text-muted">
+                                          {[match.gender, match.itemSubType].filter(Boolean).join(" · ")}
+                                      </p>
+                                      {isSelected && (
+                                          <p className="text-xs font-medium text-accent-hover">Selected</p>
+                                      )}
+                                  </div>
+                              </button>
+                              {safeProductUrl(match.referralLink) && (
+                                  <a
+                                      href={safeProductUrl(match.referralLink)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-1 inline-block text-xs text-accent-hover underline"
+                                  >
+                                      View saved product link
+                                  </a>
+                              )}
+                          </li>
+                      );
+                  })}
+              </ul>
+          )}
+      </div>
+  )}
+
+  {retailerLinkResults[index] && (
+      <div className="space-y-4 border-t border-border pt-4">
+          <div>
+              <h4 className="text-sm font-medium text-text-primary">
+                  Approved retailer search links
+              </h4>
+              <p className="mt-1 text-xs text-text-muted">
+                  External search pages only — not imported product results.
+              </p>
+          </div>
+
+          {retailerLinkResults[index].length === 0 ? (
+              <p className="text-sm text-text-muted">
+                  No retailer search links available.
+              </p>
+          ) : (
+              retailerLinkResults[index].map((queryResult) => {
+                   const marketplaces = (queryResult.links ?? []).filter(
+                       (link) => link.available && link.sourceType === "marketplace"
+                  );
+                  const brands = (queryResult.links ?? []).filter(
+                       (link) => link.available && link.sourceType === "brand"
+                  );
+                   const unavailable = (queryResult.links ?? []).filter(
+                       (link) => !link.available
+                   );
+
+                  return (
+                      <div
+                          key={`${index}-${queryResult.query}`}
+                          className="space-y-3"
+                      >
+                          <p className="text-sm text-text-secondary">
+                              Query:{" "}
+                              <span className="font-medium text-text-primary">
+                                  {queryResult.query}
+                              </span>
+                          </p>
+
+                          {marketplaces.length > 0 && (
+                              <div className="space-y-2">
+                                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                                      Marketplaces
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                      {marketplaces.map((link) => (
+                                          <a
+                                              key={`${queryResult.query}-${link.sourceId}`}
+                                              href={link.searchUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-primary hover:border-accent hover:bg-bg-subtle"
+                                          >
+                                              {link.displayName}
+                                          </a>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+
+                          {brands.length > 0 && (
+                              <div className="space-y-2">
+                                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                                      Brands
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                      {brands.map((link) => (
+                                          <a
+                                              key={`${queryResult.query}-${link.sourceId}`}
+                                              href={link.searchUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="rounded-lg border border-border px-3 py-1.5 text-sm text-text-primary hover:border-accent hover:bg-bg-subtle"
+                                          >
+                                              {link.displayName}
+                                          </a>
+                                      ))}
+                                  </div>
+                              </div>
+                          )}
+                           {unavailable.length > 0 && (
+                               <div className="text-xs text-text-muted">
+                                   <p>Search link unavailable. Visit the source and search manually:</p>
+                                   <div className="mt-1 flex flex-wrap gap-3">
+                                       {unavailable.map((link) => (
+                                           <a
+                                               key={link.sourceId}
+                                               href={link.homepageUrl}
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               className="text-accent-hover underline"
+                                           >
+                                               {link.displayName}
+                                           </a>
+                                       ))}
+                                   </div>
+                               </div>
+                           )}
+                      </div>
+                  );
+              })
+          )}
+      </div>
+  )}
                             </article>
                         ))}
                     </div>

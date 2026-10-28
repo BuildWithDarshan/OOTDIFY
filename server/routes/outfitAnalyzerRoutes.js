@@ -2,6 +2,9 @@ import express from "express";
 import multer from "multer";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
+import { normalizeClothingSuggestions } from "../services/clothingSuggestions.js";
+import { getOutfitDescription } from "../services/outfitDescriptionService.js";
+import { requestOllamaAnalysis } from "../services/ollamaRequestService.js";
 
 const router = express.Router();
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
@@ -14,7 +17,7 @@ const upload = multer({
     },
 });
 
-const allowedSubtypesByType = {
+export const allowedSubtypesByType = {
     top: [
         "t-shirt",
         "shirt",
@@ -36,6 +39,7 @@ const allowedSubtypesByType = {
         "shorts",
         "joggers",
         "cargo-pants",
+        "wide-leg-jeans",
         "skirt",
         "leggings",
         "wide-leg-trousers",
@@ -63,45 +67,6 @@ const allowedSubtypesByType = {
     ],
 };
 
-const subtypeLabels = {
-    "t-shirt": "T-Shirt",
-    shirt: "Shirt",
-    "button-up-shirt": "Button-Up Shirt",
-    "polo-shirt": "Polo Shirt",
-    "tank-top": "Tank Top",
-    sweater: "Sweater",
-    hoodie: "Hoodie",
-    sweatshirt: "Sweatshirt",
-    kurta: "Kurta",
-    blouse: "Blouse",
-    "crop-top": "Crop Top",
-    jeans: "Jeans",
-    trousers: "Trousers",
-    pants: "Pants",
-    chinos: "Chinos",
-    shorts: "Shorts",
-    joggers: "Joggers",
-    "cargo-pants": "Cargo Pants",
-    skirt: "Skirt",
-    leggings: "Leggings",
-    "wide-leg-trousers": "Wide-Leg Trousers",
-    "wide-leg-pants": "Wide-Leg Pants",
-    sneakers: "Sneakers",
-    boots: "Boots",
-    loafers: "Loafers",
-    sandals: "Sandals",
-    "formal-shoes": "Formal Shoes",
-    slides: "Slides",
-    jacket: "Jacket",
-    blazer: "Blazer",
-    coat: "Coat",
-    "bomber-jacket": "Bomber Jacket",
-    "denim-jacket": "Denim Jacket",
-    cardigan: "Cardigan",
-    overshirt: "Overshirt",
-    "open-shirt-layer": "Overshirt",
-};
-
 function isRecord(value) {
     return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -110,7 +75,7 @@ function isNullableString(value) {
     return value === null || typeof value === "string";
 }
 
-function isValidAnalysis(analysis) {
+export function isValidAnalysis(analysis) {
     if (!isRecord(analysis) || !isRecord(analysis.outfitDraft)) {
         return false;
     }
@@ -234,7 +199,7 @@ router.post(
         const prompt = `
 Analyze the supplied outfit image for OOTDIFY. Return JSON only.
 
-Identify clearly visible clothing only: tops, bottoms, footwear, and distinct outerwear. Include each garment once. Ignore accessories. Do not describe the person, pose, face, background, setting, or photography.
+ Identify clearly visible clothing only: tops, bottoms, footwear, and distinct outerwear. Include each garment once. Never include bags, glasses, sunglasses, belts, watches, jewelry, hats, or other accessories in itemSuggestions. Do not describe the person, pose, face, background, setting, or photography.
 
 Check the complete outfit, including the waist and legs, before returning the items. Do not omit clearly visible pants, trousers, jeans, shorts, skirts, or leggings. Do not invent garments that are not visible.
 
@@ -248,14 +213,19 @@ For each garment, return:
 - searchQueries: exactly two distinct product searches based on visible details
 
 Allowed top subtypes: t-shirt, shirt, button-up-shirt, polo-shirt, tank-top, sweater, hoodie, sweatshirt, kurta, blouse, crop-top.
-Allowed bottom subtypes: jeans, trousers, pants, chinos, shorts, joggers, cargo-pants, skirt, leggings, wide-leg-trousers, wide-leg-pants.
+ Allowed bottom subtypes: jeans, trousers, pants, chinos, shorts, joggers, cargo-pants, wide-leg-jeans, skirt, leggings, wide-leg-trousers, wide-leg-pants.
 Allowed footwear subtypes: sneakers, boots, loafers, sandals, formal-shoes, slides.
 Allowed outerwear subtypes: jacket, blazer, coat, bomber-jacket, denim-jacket, cardigan, overshirt, open-shirt-layer, shirt, button-up-shirt.
+
+ The subtype must be one of the exact values above. A long-sleeve T-shirt is still t-shirt; denim jeans are jeans or wide-leg-jeans; loafers are loafers. Put fit and sleeve details in visualAnalysis, not itemSubType. Ignore bags, chains, and jewelry when writing search queries.
+
+ Write outfitDraft.description as one polished fashion sentence (roughly 18 to 35 words). Lead with the visible palette, silhouette, or style mood, then describe one or two distinctive clothing relationships. Make it specific to this image without enumerating every garment. Avoid the words "featuring", "ensemble", and "paired with". Do not mention accessories, brands, materials, or cultural influences unless clearly supported by the image.
 
 Return this structure:
 {
   "outfitDraft": {
     "styleSummary": "Short style-focused title",
+    "description": "One natural sentence about the visible outfit and how its garments work together.",
     "genderSuggestion": "men, women, or null",
     "occasionSuggestion": "Short suggestion or null",
     "outfitTypeSuggestion": "Short suggestion or null",
@@ -292,51 +262,28 @@ Do not guess brands, materials, or hidden details. Use null for unknown fit or p
             options: {
                 temperature: 0.1,
                 num_ctx: 8192,
-                num_predict: 1000,
+                num_predict: 1600,
             },
         };
 
         let ollamaResponse;
-
         try {
-            ollamaResponse = await fetch(
-                "http://127.0.0.1:11434/api/generate",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(ollamaPayload),
-                    signal: AbortSignal.timeout(600_000),
-                }
-            );
+            ollamaResponse = await requestOllamaAnalysis(ollamaPayload);
         } catch (error) {
-            console.error("Local outfit analyzer could not reach Ollama:", error);
-
-            const timedOut = error.name === "TimeoutError";
+            console.error("Local outfit analyzer Ollama request failed:", error);
+            const timedOut = error.code === "OLLAMA_TIMEOUT";
             return res.status(timedOut ? 504 : 502).json({
                 success: false,
                 message: timedOut
-                    ? "Ollama analysis timed out."
-                    : "Could not connect to local Ollama. Check that Ollama is running and the model is installed.",
+                    ? "Ollama took longer than 10 minutes to analyze the image. Check that the model is still running and try again."
+                    : "Could not complete the local Ollama request. Check that Ollama and the model are running.",
             });
         }
 
-        let ollamaText;
-
-        try {
-            ollamaText = await ollamaResponse.text();
-        } catch (error) {
-            console.error("Could not read Ollama response:", error);
-            return res.status(502).json({
-                success: false,
-                message: "Could not read the response from Ollama.",
-            });
-        }
-
-        if (!ollamaResponse.ok) {
+        const ollamaText = ollamaResponse.body;
+        if (ollamaResponse.statusCode < 200 || ollamaResponse.statusCode >= 300) {
             console.error(
-                `Ollama returned HTTP ${ollamaResponse.status}:`,
+                `Ollama returned HTTP ${ollamaResponse.statusCode}:`,
                 ollamaText
             );
             return res.status(502).json({
@@ -392,30 +339,37 @@ Do not guess brands, materials, or hidden details. Use null for unknown fit or p
         analysis.outfitDraft.seasonSuggestion.trim().toLowerCase();
 }
 
-        if (!isValidAnalysis(analysis)) {
+         analysis = normalizeClothingSuggestions(analysis, allowedSubtypesByType);
+         if (isRecord(analysis) && Array.isArray(analysis.itemSuggestions) &&
+             analysis.itemSuggestions.length === 0) {
+             return res.status(422).json({
+                 success: false,
+                 message: "No supported clothing was identified. Try an image with visible garments.",
+             });
+         }
+
+         if (!isValidAnalysis(analysis)) {
+     const unsupportedSubtype = analysis?.itemSuggestions?.find((item) =>
+         item && Object.hasOwn(allowedSubtypesByType, item.itemType) &&
+         !allowedSubtypesByType[item.itemType].includes(item.itemSubType)
+     );
+     const message = unsupportedSubtype
+         ? `Ollama used unsupported ${unsupportedSubtype.itemType} subtype "${String(unsupportedSubtype.itemSubType).slice(0, 80)}".`
+         : "Ollama returned analysis with an invalid structure.";
+     console.warn("Invalid Ollama outfit analysis:", message);
     return res.status(502).json({
         success: false,
-        message: "Ollama returned analysis with an invalid structure.",
+         message,
     });
 }
 
-        const itemNames = analysis.itemSuggestions.map((item) => {
-            const subtypeLabel = subtypeLabels[item.itemSubType];
-            const color = item.visualAnalysis.colors[0]?.trim();
-
-            return color
-                ? `${color} ${subtypeLabel}`.replace(
-                    /^\w/,
-                    (firstLetter) => firstLetter.toUpperCase()
-                )
-                : subtypeLabel;
-        });
-
         const styleSummary = analysis.outfitDraft.styleSummary.trim();
-        const description = `A coordinated outfit featuring ${itemNames.join(", ")}.`;
 
         analysis.outfitDraft.title = styleSummary || "Clothing Look";
-        analysis.outfitDraft.description = description;
+        analysis.outfitDraft.description = getOutfitDescription(
+            analysis.outfitDraft,
+            analysis.itemSuggestions
+        );
         analysis.outfitDraft.isTrending = false;
         analysis.outfitDraft.isCelebrityInspired = false;
         analysis.outfitDraft.inspiredByLabel = null;
