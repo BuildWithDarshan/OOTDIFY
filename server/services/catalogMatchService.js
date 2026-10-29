@@ -105,6 +105,33 @@ function patternFamily(text) {
     return null;
 }
 
+const FIT_GROUPS = [
+    ["oversized", ["oversized", "oversize"]],
+    ["relaxed", ["relaxed", "loose", "baggy"]],
+    ["slim", ["slim", "skinny"]],
+    ["regular", ["regular"]],
+    ["straight", ["straight"]],
+    ["cropped", ["cropped"]],
+];
+
+const VISIBLE_DETAILS = [
+    "leather", "denim", "puffer", "quilted", "washed", "faded",
+    "ribbed", "suede", "corduroy", "linen", "wool",
+];
+
+function fitFamily(text) {
+    const value = words(text);
+    return FIT_GROUPS.find(([, variants]) =>
+        variants.some((variant) => hasPhrase(value, variant)))?.[0] ?? null;
+}
+
+function visualDetailHits(itemName, garment) {
+    const wanted = words(`${garment.name ?? ""} ${garment.visualDescription ?? ""}`);
+    const candidate = words(itemName);
+    return VISIBLE_DETAILS.filter((detail) =>
+        hasPhrase(wanted, detail) && hasPhrase(candidate, detail)).length;
+}
+
 export function matchCatalogItem(item, garment) {
     if (item.itemType !== garment.itemType) return null;
     if (garment.gender && item.gender !== garment.gender) return null;
@@ -143,9 +170,15 @@ export function matchCatalogItem(item, garment) {
     );
     const queryHits = [...queryWords].filter((word) => hasPhrase(candidateText, word)).length;
     const exactSubtype = words(item.itemSubType) === words(garment.itemSubType);
+    const wantedFit = fitFamily(garment.fit) ||
+        fitFamily(garment.name) || fitFamily(garment.visualDescription);
+    const candidateFit = fitFamily(`${item.name} ${item.itemSubType}`);
+    const fitScore = wantedFit && candidateFit === wantedFit ? 3 : 0;
+    const detailScore = Math.min(visualDetailHits(item.name, garment), 3) * 2;
 
     return {
         item,
-        score: wantedColors.length * 10 + (exactSubtype ? 5 : 0) + Math.min(queryHits, 5),
+        score: wantedColors.length * 10 + (exactSubtype ? 5 : 0) +
+            Math.min(queryHits, 5) + fitScore + detailScore,
     };
 }
