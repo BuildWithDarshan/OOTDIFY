@@ -25,6 +25,7 @@ import {
 import { uploadProfilePicture } from "../services/userService.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { optimizeImageForUpload } from "../utils/imageProcessing.js";
+import MasonryGridItem from "../components/Community/MasonryGridItem.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -49,7 +50,7 @@ const OutfitCard = ({
     onUnsave,
     removing,
 }) => (
-    <article className="group relative mb-3 cursor-pointer break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)] sm:mb-4">
+    <article className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)]">
         <Link
             to={`/community/${outfit._id}`}
             className="block"
@@ -125,7 +126,7 @@ const OutfitCard = ({
 const OutfitSkeleton = () => (
     <div
         aria-hidden="true"
-        className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-border/70 bg-bg"
+        className="overflow-hidden rounded-2xl border border-border/70 bg-bg"
     >
         <div className="aspect-[4/5] animate-pulse bg-bg-subtle" />
     </div>
@@ -241,7 +242,7 @@ const CommunityCreatorProfile = () => {
             setSavedMoreError("");
         });
 
-        getSavedCommunityOutfits({ page: 1, limit: PAGE_SIZE })
+        getSavedCommunityOutfits({ page: 1, limit: PAGE_SIZE, order: "outfitLatest" })
             .then(async (data) => {
                 if (cancelled || requestId !== savedRequestIdRef.current) return;
                 const saved = await attachCommunityInteractionStates(data.outfits || []);
@@ -346,6 +347,7 @@ const CommunityCreatorProfile = () => {
                 const data = await getSavedCommunityOutfits({
                     page: nextPage,
                     limit: PAGE_SIZE,
+                    order: "outfitLatest",
                 });
                 if (requestId !== savedRequestIdRef.current) return;
                 const saved = await attachCommunityInteractionStates(data.outfits || []);
@@ -776,12 +778,12 @@ const CommunityCreatorProfile = () => {
                         {visibleLoading && visibleOutfits.length === 0 && (
                             <div
                                 aria-hidden="true"
-                                className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4"
+                                className="grid grid-cols-2 [grid-auto-rows:8px] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5"
                             >
                                 {Array.from(
                                     { length: activeTab === "saved" ? 5 : 8 },
                                     (_, index) => (
-                                    <OutfitSkeleton key={index} />
+                                    <MasonryGridItem key={index}><OutfitSkeleton /></MasonryGridItem>
                                     ),
                                 )}
                             </div>
@@ -845,30 +847,19 @@ const CommunityCreatorProfile = () => {
                                         ? `${name}'s created community outfits`
                                         : "Your saved community outfits"
                                 }
-                                className="columns-2 gap-3 sm:gap-4 md:columns-3 lg:columns-5 lg:gap-4"
+                                className="grid grid-cols-2 [grid-auto-rows:8px] gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5"
                             >
                                 {visibleOutfits.map((outfit) => (
-                                    <OutfitCard
-                                        key={outfit._id}
-                                        outfit={outfit}
-                                        isOwnProfile={isOwnProfile}
-                                        onEdit={
-                                            activeTab === "created"
-                                                ? true
-                                                : false
-                                        }
-                                        onDelete={
-                                            activeTab === "created"
-                                                ? handleDeleteCreatedOutfit
-                                                : null
-                                        }
-                                        onUnsave={
-                                            activeTab === "saved"
-                                                ? handleUnsaveOutfit
-                                                : null
-                                        }
-                                        removing={removingIds.has(outfit._id)}
-                                    />
+                                    <MasonryGridItem key={outfit._id}>
+                                        <OutfitCard
+                                            outfit={outfit}
+                                            isOwnProfile={isOwnProfile}
+                                            onEdit={activeTab === "created"}
+                                            onDelete={activeTab === "created" ? handleDeleteCreatedOutfit : null}
+                                            onUnsave={activeTab === "saved" ? handleUnsaveOutfit : null}
+                                            removing={removingIds.has(outfit._id)}
+                                        />
+                                    </MasonryGridItem>
                                 ))}
                             </div>
                         )}

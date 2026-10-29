@@ -1,6 +1,8 @@
 import {useState, useEffect} from 'react';
 import {Link, useNavigate} from "react-router-dom";
+import { Clock3, Plus, Shirt, Sparkles, Star } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import { getOutfits, deleteOutfit, setOutfitOfTheDay } from '../services/outfitService.js';
 
 const ManageOutfits = () => {
@@ -11,8 +13,8 @@ const ManageOutfits = () => {
     const navigate = useNavigate();
 
     const loadOutfits = async() => {
-        setLoading(true);
         try {
+            await getOutfits({isOOTD: true});
             const data = await getOutfits();
             setOutfits(data.outfits);
         } catch (err) {
@@ -24,7 +26,13 @@ const ManageOutfits = () => {
     }
 
     useEffect(() => {
-        loadOutfits();
+        let current = true;
+        getOutfits({isOOTD: true})
+            .then(() => getOutfits())
+            .then((data) => { if (current) setOutfits(data.outfits); })
+            .catch((err) => { if (current) setError(err.response?.data?.message || "Failed to load outfits"); })
+            .finally(() => { if (current) setLoading(false); });
+        return () => { current = false; };
     },[]);
 
     const handleDelete = async(outfit) => {
@@ -51,10 +59,10 @@ const ManageOutfits = () => {
             key: "coverImage",
             label: "Image",
             render: (row) => (
-                <img src={row.coverImage?.url} alt={row.title} className='w-10 h-10 rounded-md object-cover'/>
+                <img src={row.coverImage?.url} alt={row.title} className='h-12 w-12 rounded-xl object-cover'/>
             ),
         },
-        {key: "title", label: "Title"},
+        {key: "title", label: "Title", render: (row) => <span className="font-semibold text-green-900">{row.title}</span>},
         { key: "gender", label: "Gender" },
         {
             key: "occasion",
@@ -85,13 +93,20 @@ const ManageOutfits = () => {
             ),
         },
         {
+            key: "lastOOTDAt",
+            label: "Last featured",
+            render: (row) => row.lastOOTDAt || row.ootdDate
+                ? new Date(row.lastOOTDAt || row.ootdDate).toLocaleDateString("en-IN")
+                : <span className="text-xs font-semibold text-green-600">Never featured</span>,
+        },
+        {
             key: "ootdAction",
             label: "",
             render: (row) =>
                 !row.isOOTD && (
                     <button
                         onClick={() => handleSetOOTD(row)}
-                        className="text-xs text-accent-hover hover:underline whitespace-nowrap"
+                        className="whitespace-nowrap rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-xs font-semibold text-green-800 hover:bg-green-100"
                     >
                         Set as OOTD
                     </button>
@@ -100,11 +115,13 @@ const ManageOutfits = () => {
     ]
   return (
     <div>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='font-display text-3xl text-text-primary'>Outfits</h1>
-        <Link to="/outfits/add" className="bg-accent text-on-accent rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent-hover">
-          + Add Outfit
-        </Link>
+      <PageHeader icon={Shirt} title="Outfits" description="Curate complete looks, update featured pieces, and review your collection."
+        action={<div className="flex flex-wrap gap-2">{import.meta.env.VITE_ENABLE_OUTFIT_ANALYZER === "true" && <Link to="/outfit-analyzer" className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 text-sm font-semibold text-green-800 hover:bg-green-50"><Sparkles size={17} /> Analyze outfit</Link>}<Link to="/outfits/add" className="inline-flex items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800"><Plus size={17} /> Add outfit</Link></div>} />
+
+      <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border border-green-100 bg-white p-4 text-sm text-green-700">
+        <Clock3 size={19} className="shrink-0 text-green-600" />
+        <span className="min-w-0 flex-1">Men’s and women’s OOTD rotate each India calendar day. A manual selection stays featured until the next day.</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-800"><Star size={13} /> {outfits.filter((outfit) => outfit.isOOTD).length} featured now</span>
       </div>
 
       {loading && <p className="text-text-secondary">Loading...</p>}
@@ -114,6 +131,8 @@ const ManageOutfits = () => {
         <DataTable
             columns={columns}
             rows={outfits}
+            searchFields={["title", "gender", (row) => row.occasion?.name, (row) => row.outfitType?.name]}
+            searchPlaceholder="Search outfits, occasion, or type..."
             onEdit={(outfit) => navigate(`/outfits/edit/${outfit._id}`)}
             onDelete={handleDelete}
             emptyMessage="No outfits yet — add your first one."

@@ -144,17 +144,6 @@ const OutfitDetails = () => {
       <div className="pointer-events-none absolute -right-40 top-[38rem] -z-10 hidden h-96 w-96 rounded-full bg-bg-subtle blur-3xl sm:block" />
 
       <div className="relative z-10 mx-auto mt-15 max-w-7xl px-4 py-6 sm:px-6 sm:py-10 md:px-10">
-        <Link
-  to={outfit.gender === "women" ? "/women" : "/men"}
-  className="group mb-6 hidden items-center gap-2 rounded-full border border-transparent px-1 py-2 text-xs font-medium text-text-secondary transition-all duration-300 hover:gap-2.5 hover:text-accent-hover md:inline-flex sm:text-sm"
->
-  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-bg transition-all duration-300 group-hover:border-accent group-hover:bg-bg-subtle">
-    <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
-  </span>
-
-  Back to {outfit.gender === "women" ? "Women" : "Men"}
-</Link>
-
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-14 xl:gap-20">
           <section className="lg:sticky lg:top-24 lg:self-start">
             <div className="group relative aspect-[3/4] w-full overflow-hidden rounded-[1.75rem] border border-border/70 bg-bg-subtle shadow-[0_24px_70px_rgba(8,28,21,0.12)]">

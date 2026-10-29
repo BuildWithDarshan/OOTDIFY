@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getProductIdentity } from "../services/productIdentityService.js";
 
 const itemSchema = new mongoose.Schema(
     {
@@ -19,6 +20,10 @@ const itemSchema = new mongoose.Schema(
         referralLink: {
             type: String,
             required: [true, 'Referral Link is required'],
+        },
+        productKey: {
+            type: String,
+            select: false,
         },
         shoppingSite: {
             type: String,
@@ -57,6 +62,22 @@ const itemSchema = new mongoose.Schema(
 
 itemSchema.index({ isWardrobeEssential: 1, gender: 1 });
 itemSchema.index({ gender: 1, itemType: 1 });
+itemSchema.index(
+    { productKey: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            isActive: true,
+            productKey: { $type: "string" },
+        },
+    }
+);
+
+itemSchema.pre("validate", function () {
+    if (this.isNew || this.isModified("referralLink") || this.isModified("isActive")) {
+        this.productKey = getProductIdentity(this.referralLink)?.key ?? undefined;
+    }
+});
 
 const Item = mongoose.model("Item", itemSchema);
 

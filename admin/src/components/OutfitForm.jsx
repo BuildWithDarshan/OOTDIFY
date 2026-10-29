@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { getOccasions, getOutfitTypes } from "../services/taxonomyService.js";
 import { getItems } from "../services/itemService.js";
+import { ImagePlus, Search, ShoppingBag, Sparkles } from "lucide-react";
 
 const GENDERS = ["men", "women"];
 const SEASONS = ["summer", "winter", "monsoon", "all-season"];
@@ -8,17 +9,20 @@ const SEASONS = ["summer", "winter", "monsoon", "all-season"];
 // Shared form for AddOutfit.jsx and EditOutfit.jsx. Pulls Occasions, OutfitTypes,
 // and Items from their own endpoints since Outfit references all three by id.
 const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" }) => {
-    const [title, setTitle] = useState("");
-    const [gender, setGender] = useState("men");
-    const [occasion, setOccasion] = useState("");
-    const [outfitType, setOutfitType] = useState("");
-    const [season, setSeason] = useState("all-season");
-    const [description, setDescription] = useState("");
-    const [isTrending, setIsTrending] = useState(false);
-    const [isCelebrityInspired, setIsCelebrityInspired] = useState(false);
-    const [inspiredByLabel, setInspiredByLabel] = useState("");
-    const [selectedItemIds, setSelectedItemIds] = useState([]);
+    const [title, setTitle] = useState(initialData?.title || "");
+    const [gender, setGender] = useState(initialData?.gender || "men");
+    const [occasion, setOccasion] = useState(initialData?.occasion?._id || initialData?.occasion || "");
+    const [outfitType, setOutfitType] = useState(initialData?.outfitType?._id || initialData?.outfitType || "");
+    const [season, setSeason] = useState(initialData?.season || "all-season");
+    const [description, setDescription] = useState(initialData?.description || "");
+    const [isTrending, setIsTrending] = useState(Boolean(initialData?.isTrending));
+    const [isCelebrityInspired, setIsCelebrityInspired] = useState(Boolean(initialData?.isCelebrityInspired));
+    const [inspiredByLabel, setInspiredByLabel] = useState(initialData?.inspiredByLabel || "");
+    const [selectedItemIds, setSelectedItemIds] = useState(() => (initialData?.items || []).map((item) => item._id || item));
+    const [itemSearch, setItemSearch] = useState("");
     const [coverImageFile, setCoverImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
+    const previewUrl = useRef("");
     const [error, setError] = useState("");
 
     const [occasions, setOccasions] = useState([]);
@@ -47,28 +51,25 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
         loadOptions();
     }, []);
 
-    // Pre-fill when editing — note occasion/outfitType/items arrive as populated
-    // objects from getOutfitById, so we extract just the ids for the form state
-    useEffect(() => {
-        if (initialData) {
-            setTitle(initialData.title || "");
-            setGender(initialData.gender || "men");
-            setOccasion(initialData.occasion?._id || initialData.occasion || "");
-            setOutfitType(initialData.outfitType?._id || initialData.outfitType || "");
-            setSeason(initialData.season || "all-season");
-            setDescription(initialData.description || "");
-            setIsTrending(!!initialData.isTrending);
-            setIsCelebrityInspired(!!initialData.isCelebrityInspired);
-            setInspiredByLabel(initialData.inspiredByLabel || "");
-            setSelectedItemIds(
-                (initialData.items || []).map((item) => item._id || item)
-            );
-        }
-    }, [initialData]);
+    useEffect(() => () => { if (previewUrl.current) URL.revokeObjectURL(previewUrl.current); }, []);
+    const changeImage = (event) => {
+        const file = event.target.files?.[0] ?? null;
+        if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+        previewUrl.current = file ? URL.createObjectURL(file) : "";
+        setCoverImageFile(file);
+        setImagePreview(previewUrl.current);
+    };
 
     // Only show items matching the currently selected gender — an outfit
     // shouldn't mix men's and women's items
     const genderItems = allItems.filter((item) => item.gender === gender);
+    const searchWords = itemSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const matchingItems = genderItems.filter((item) => {
+        const searchable = [item.name, item.brand, item.itemSubType, item.shoppingSite]
+            .filter(Boolean).join(" ").toLowerCase();
+        return searchWords.every((word) => searchable.includes(word));
+    });
+    const selectedItems = genderItems.filter((item) => selectedItemIds.includes(item._id));
 
     const toggleItem = (itemId) => {
         setSelectedItemIds((prev) =>
@@ -124,27 +125,27 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
     }
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5 max-w-2xl">
-            {error && <div className="text-sm text-white bg-red-500 rounded-lg px-4 py-2">{error}</div>}
+        <form onSubmit={handleSubmit} className="admin-form max-w-5xl space-y-6 rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-8">
+            {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-            <div>
+            <div className="flex items-center gap-3 border-b border-green-100 pb-5"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-800"><Sparkles size={19} /></span><div><h2 className="font-display text-2xl text-green-900">The look</h2><p className="text-xs text-green-600">Start with an image and the details people will see.</p></div></div>
+
+            <div className="grid gap-4 rounded-2xl bg-[#f8fbf7] p-4 sm:grid-cols-[120px_1fr] sm:items-center">
+                <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-white text-green-400">
+                    {imagePreview || initialData?.coverImage?.url ? <img src={imagePreview || initialData.coverImage.url} alt="Outfit cover preview" className="h-full w-full object-cover" /> : <ImagePlus size={28} />}
+                </div>
+                <div>
                 <label className="block text-sm text-text-secondary mb-1">Cover Image</label>
-                {initialData?.coverImage?.url && !coverImageFile && (
-                    <img
-                        src={initialData.coverImage.url}
-                        alt={initialData.title}
-                        className="w-24 h-24 rounded-lg object-cover mb-2"
-                    />
-                )}
                 <input
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
-                    onChange={(e) => setCoverImageFile(e.target.files[0])}
+                    onChange={changeImage}
                     className="w-full text-sm text-text-secondary"
                 />
                 {initialData && (
                     <p className="text-xs text-text-muted mt-1">Leave empty to keep the current image.</p>
                 )}
+                </div>
             </div>
 
             <div>
@@ -264,26 +265,51 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
                 />
             </div>
 
-            <div>
+            <div className="rounded-2xl border border-green-100 bg-[#fbfdfb] p-4 sm:p-5">
+                <div className="mb-3 flex items-center gap-2 text-green-800"><ShoppingBag size={18} /><h3 className="font-display text-xl">Choose the pieces</h3></div>
                 <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm text-text-secondary">
                         Items ({gender}) — select at least one
                     </label>
-                    <span className="text-sm text-accent-hover font-medium">
+                    <span className="rounded-full bg-green-700 px-3 py-1 text-xs font-semibold text-white">
                         Total: ₹{totalPrice}
                     </span>
                 </div>
+
+                {selectedItems.length > 0 && (
+                    <div className="mb-3 rounded-lg border border-border bg-bg-subtle p-3 text-sm text-text-primary">
+                        <p className="mb-2 font-medium">Selected ({selectedItems.length})</p>
+                        <div className="flex flex-wrap gap-2">
+                            {selectedItems.map((item) => (
+                                <button key={item._id} type="button" onClick={() => toggleItem(item._id)}
+                                    aria-label={`Remove ${item.name} from outfit`}
+                                    className="rounded-lg border border-border bg-bg px-2 py-1 text-left text-xs hover:border-accent">
+                                    {item.name} ×
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <label className="mb-2 block text-sm text-text-secondary">
+                    <span className="inline-flex items-center gap-1.5"><Search size={15} /> Search catalog items</span>
+                    <input type="search" value={itemSearch} onChange={(event) => setItemSearch(event.target.value)}
+                        placeholder="Search name, brand, type, or store"
+                        className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-text-primary focus:border-accent focus:outline-none" />
+                </label>
 
                 {genderItems.length === 0 ? (
                     <p className="text-text-muted text-sm">
                         No {gender}'s items exist yet — add some in Items first.
                     </p>
+                ) : matchingItems.length === 0 ? (
+                    <p className="text-text-muted text-sm">No catalog items match this search for {gender}.</p>
                 ) : (
-                    <div className="border border-border rounded-lg max-h-64 overflow-y-auto divide-y divide-border">
-                        {genderItems.map((item) => (
+                    <div className="max-h-72 divide-y divide-green-100 overflow-y-auto rounded-xl border border-green-100 bg-white">
+                        {matchingItems.map((item) => (
                             <label
                                 key={item._id}
-                                className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-bg-subtle"
+                                className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm hover:bg-green-50"
                             >
                                 <input
                                     type="checkbox"
@@ -294,7 +320,7 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
                                 <img
                                     src={item.image?.url}
                                     alt={item.name}
-                                    className="w-8 h-8 rounded object-cover"
+                                    className="h-10 w-10 rounded-lg object-cover"
                                 />
                                 <span className="flex-1 text-text-primary">{item.name}</span>
                                 <span className="text-text-secondary">₹{item.price}</span>
@@ -307,7 +333,7 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
             <button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60"
+                className="w-full rounded-xl bg-green-700 px-6 py-3 font-semibold text-white shadow-sm hover:bg-green-800 disabled:opacity-60 sm:w-auto"
             >
                 {submitting ? "Saving..." : submitLabel}
             </button>

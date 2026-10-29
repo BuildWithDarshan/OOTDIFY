@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import OutfitForm from "../components/OutfitForm.jsx";
+import FormPageShell from "../components/FormPageShell.jsx";
+import { Shirt } from "lucide-react";
 import { getOutfitById, updateOutfit } from "../services/outfitService.js";
 
 const EditOutfit = () => {
@@ -40,15 +42,14 @@ const EditOutfit = () => {
     if (error) return <p className="text-red-500">{error}</p>;
 
     return (
-        <div>
-            <h1 className="font-display text-3xl text-text-primary mb-6">Edit Outfit</h1>
+        <FormPageShell icon={Shirt} title="Edit outfit" description="Refine this look and its selected products." backTo="/outfits">
             <OutfitForm
                 initialData={outfit}
                 onSubmit={handleSubmit}
                 submitting={submitting}
                 submitLabel="Save Changes"
             />
-        </div>
+        </FormPageShell>
     );
 };
 

@@ -76,7 +76,7 @@ const StyleTips = () => {
                 fullHeight
             />
 
-            <div className="px-4 sm:px-6 md:px-10 py-10 max-w-6xl mx-auto">
+            <div className="mx-auto w-full max-w-[1440px] px-4 py-10 sm:px-6 lg:px-8 xl:px-10">
                 
                 {/* Heading Description */}
                 <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">

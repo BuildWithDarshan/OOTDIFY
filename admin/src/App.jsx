@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAdminAuth } from "./context/AdminAuthContext.jsx";
+import { useAdminAuth } from "./context/useAdminAuth.js";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";
@@ -17,6 +17,7 @@ import ManageStyleTips from "./pages/ManageStyleTips.jsx";
 import AddStyleTip from "./pages/AddStyleTip.jsx";
 import Users from "./pages/Users.jsx";
 import Settings from "./pages/Settings.jsx";
+import OutfitAnalyzer from "./pages/OutfitAnalyzer.jsx";
 import ManageCommunityReports from "./pages/ManageCommunityReports.jsx";
 
 // Wraps any route that requires a logged-in admin. Shows nothing (or a
@@ -62,6 +63,14 @@ function App() {
                     <Route path="/outfits" element={<ManageOutfits />} />
                     <Route path="/outfits/add" element={<AddOutfit />} />
                     <Route path="/outfits/edit/:id" element={<EditOutfit />} />
+
+                    {import.meta.env.VITE_ENABLE_OUTFIT_ANALYZER === "true" && (
+    <Route
+        path="/outfit-analyzer"
+        element={<OutfitAnalyzer />}
+    />
+)}
+
                     <Route path="/trends" element={<ManageTrends />} />
                     <Route path="/trends/add" element={<AddTrend />} />
                     <Route path="/style-tips" element={<ManageStyleTips/>}/>

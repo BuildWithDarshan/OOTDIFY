@@ -1,6 +1,8 @@
 import {useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import TipForm from '../components/TipForm.jsx';
+import FormPageShell from '../components/FormPageShell.jsx';
+import { BookOpenText } from 'lucide-react';
 import {createStyleTip} from "../services/styleTipService.js";
 
 const AddStyleTip = () => {
@@ -17,10 +19,9 @@ const AddStyleTip = () => {
         }
     }
   return (
-    <div>
-      <h1 className="font-display text-3xl text-text-primary mb-6">Add Style Tip</h1>
-      <TipForm onSubmit={handleSubmit} submitting={submitting} submitLabel='Create Style Tip'/>
-    </div>
+    <FormPageShell icon={BookOpenText} title="Create styling tip" description="Turn practical advice into a useful editorial story." backTo="/style-tips">
+      <div className="rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-8"><TipForm onSubmit={handleSubmit} submitting={submitting} submitLabel='Create Style Tip'/></div>
+    </FormPageShell>
   )
 }
 

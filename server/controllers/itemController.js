@@ -2,6 +2,7 @@ import Item from "../models/Item.js";
 import {uploadImageToCloudinary, deleteImageCloudinary} from "../services/cloudinaryService.js";
 
 export const createItem = async(req,res) => {
+    let uploadedPublicId;
     try {
         
         const {name, price, referralLink, shoppingSite, brand, gender, itemType, itemSubType, isWardrobeEssential} = req.body;
@@ -20,6 +21,7 @@ export const createItem = async(req,res) => {
         }
 
         const {url, publicId} = await uploadImageToCloudinary(req.file.path, "ootdify/items");
+        uploadedPublicId = publicId;
  
         const item = await Item.create({
             name: name.trim(),
@@ -37,6 +39,10 @@ export const createItem = async(req,res) => {
         return res.status(201).json({success: true, message: "Item Created Successfully", item});
 
     } catch (error) {
+        if (uploadedPublicId) await deleteImageCloudinary(uploadedPublicId);
+        if (error.code === 11000) {
+            return res.status(409).json({success: false, message: "This product is already in the catalog. Check the product URL again."});
+        }
         return res.status(500).json({success: false, message: "Somthing went wrong while creating the item", error: error.message});
     }
 }
@@ -95,6 +101,7 @@ export const getItemById = async(req,res) => {
 }
 
 export const updateItem = async(req,res) => {
+    let uploadedPublicId;
     try {
 
         const item = await Item.findById(req.params.id);
@@ -129,14 +136,20 @@ export const updateItem = async(req,res) => {
         if(req.file) {
             const oldPublicId = item.image?.publicId;
             const {url, publicId} = await uploadImageToCloudinary(req.file.path, "ootdify/items");
+            uploadedPublicId = publicId;
             item.image = {url, publicId};
+            await item.save();
             await deleteImageCloudinary(oldPublicId);
+        } else {
+            await item.save();
         }
-
-        await item.save();
 
         return res.status(200).json({success: true, message: "Item Updated Successfully",item});
     } catch (error) {
+        if (uploadedPublicId) await deleteImageCloudinary(uploadedPublicId);
+        if (error.code === 11000) {
+            return res.status(409).json({success: false, message: "This product is already in the catalog. Check the product URL again."});
+        }
         if (error.name === "CastError") {
             return res.status(404).json({
                 success: false,

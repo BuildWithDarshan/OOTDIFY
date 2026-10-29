@@ -20,6 +20,13 @@ const WARDROBES = {
   },
 };
 
+const INDIA_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const indiaDayKey = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+const millisecondsUntilIndiaMidnight = () =>
+  DAY_MS - ((Date.now() + INDIA_OFFSET_MS) % DAY_MS) + 1000;
+
 const Wardrobe = ({
   gender,
   outfit,
@@ -260,32 +267,54 @@ const OOTDBanner = () => {
 
   useEffect(() => {
     let cancelled = false;
+    let refreshVersion = 0;
+    let dayKey = indiaDayKey();
+    let rolloverTimer;
 
-    const load = async (gender) => {
+    const load = async (gender, version) => {
       try {
         const data = await getOOTD(gender);
-        if (!cancelled) {
+        if (!cancelled && version === refreshVersion) {
           setOutfits((current) => ({
             ...current,
             [gender]: data.outfit || null,
           }));
         }
       } catch {
-        if (!cancelled) {
+        if (!cancelled && version === refreshVersion) {
           setError((current) => ({ ...current, [gender]: true }));
         }
       } finally {
-        if (!cancelled) {
+        if (!cancelled && version === refreshVersion) {
           setLoading((current) => ({ ...current, [gender]: false }));
         }
       }
     };
 
-    load("men");
-    load("women");
+    const refresh = () => {
+      dayKey = indiaDayKey();
+      const version = ++refreshVersion;
+      setLoading({ men: true, women: true });
+      setError({ men: false, women: false });
+      load("men", version);
+      load("women", version);
+      window.clearTimeout(rolloverTimer);
+      rolloverTimer = window.setTimeout(refresh, millisecondsUntilIndiaMidnight());
+    };
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && indiaDayKey() !== dayKey) {
+        refresh();
+      }
+    };
+
+    refresh();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       cancelled = true;
+      window.clearTimeout(rolloverTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, []);
 

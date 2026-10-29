@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { UsersRound } from "lucide-react";
 import api from "../services/api.js";
 import DataTable from "../components/DataTable.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 
 const columns = [
     { key: "name", label: "Name" },
@@ -50,7 +52,7 @@ const Users = () => {
 
     return (
         <div>
-            <h1 className="font-display text-3xl text-text-primary mb-6">Users</h1>
+            <PageHeader icon={UsersRound} title="Users" description="A read-only view of the community and their preferences." />
 
             {loading && <p className="text-text-secondary">Loading...</p>}
             {error && <p className="text-red-500">{error}</p>}

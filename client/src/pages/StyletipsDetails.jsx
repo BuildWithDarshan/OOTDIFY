@@ -1,30 +1,24 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, BookOpen, Clock, CheckCircle } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { getStyleTipById } from "../services/styleTipService.js";
 import PageMeta from "../components/Common/PageMeta.jsx";
 
 const StyleTipDetails = () => {
   const { id } = useParams();
-  const [tip, setTip] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  // const [scrollProgress, setScrollProgress] = useState(0);
+  const [result, setResult] = useState({ id: null, tip: null, notFound: false });
+  const loading = result.id !== id;
+  const tip = loading ? null : result.tip;
+  const notFound = !loading && result.notFound;
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setNotFound(false);
-
     getStyleTipById(id)
       .then((data) => {
-        if (!cancelled) setTip(data.styleTip);
+        if (!cancelled) setResult({ id, tip: data.styleTip, notFound: false });
       })
       .catch(() => {
-        if (!cancelled) setNotFound(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setResult({ id, tip: null, notFound: true });
       });
 
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -32,18 +26,6 @@ const StyleTipDetails = () => {
       cancelled = true;
     };
   }, [id]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalHeight > 0) {
-        const progress = (window.scrollY / totalHeight) * 100;
-        setScrollProgress(Math.min(100, Math.max(0, progress)));
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   if (loading) {
     return (

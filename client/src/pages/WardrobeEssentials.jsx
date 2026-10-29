@@ -58,8 +58,6 @@ const WardrobeEssentials = () => {
   // Fetch all wardrobe essentials once on mount
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(false);
 
     getItems({ isWardrobeEssential: true })
       .then((data) => {

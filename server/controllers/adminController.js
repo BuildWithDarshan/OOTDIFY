@@ -3,6 +3,7 @@ import Outfit from "../models/Outfit.js";
 import Item from "../models/Item.js";
 import Trend from "../models/Trend.js";
 import StyleTip from "../models/StyleTip.js";
+import CommunityReport from "../models/CommunityReport.js";
 
 export const getDashboardStats = async(req,res) => {
     try {
@@ -13,6 +14,9 @@ export const getDashboardStats = async(req,res) => {
             totalTrends,
             totalStyleTips,
             totalUsers,
+            trendingOutfits,
+            ootdOutfits,
+            pendingReports,
             recentOutfits
         ] = await Promise.all([
             Outfit.countDocuments({isActive: true}),
@@ -20,15 +24,18 @@ export const getDashboardStats = async(req,res) => {
             Trend.countDocuments({isActive: true}),
             StyleTip.countDocuments({isActive: true}),
             User.countDocuments({role: "user"}),
+            Outfit.countDocuments({isActive: true, isTrending: true}),
+            Outfit.countDocuments({isActive: true, isOOTD: true}),
+            CommunityReport.countDocuments({status: "pending"}),
             Outfit.find({isActive: true})
               .sort({createdAt: -1})
               .limit(5)
               .populate("occasion", "name")
               .populate("outfitType", "name")
-              .select("title coverImage gender totalPrice createdAt"),
+              .select("title coverImage gender totalPrice createdAt occasion outfitType isTrending isOOTD"),
         ]);
 
-        return res.status(200).json({success: true, stats: {totalOutfits, totalItems, totalTrends, totalStyleTips, totalUsers}, recentOutfits});
+        return res.status(200).json({success: true, stats: {totalOutfits, totalItems, totalTrends, totalStyleTips, totalUsers, trendingOutfits, ootdOutfits, pendingReports}, recentOutfits});
 
     } catch (error) {
          return res.status(500).json({

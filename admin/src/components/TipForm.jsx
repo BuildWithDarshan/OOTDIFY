@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const CATEGORIES = [
     "color-combinations",
@@ -10,19 +10,11 @@ const CATEGORIES = [
 ];
 
 const TipForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" }) => {
-    const [title, setTitle] = useState("");
-    const [content, setContent] = useState("");
-    const [category, setCategory] = useState("general");
+    const [title, setTitle] = useState(initialData?.title || "");
+    const [content, setContent] = useState(initialData?.content || "");
+    const [category, setCategory] = useState(initialData?.category || "general");
     const [imageFile, setImageFile] = useState(null);
     const [error, setError] = useState("");
-
-    useEffect(() => {
-        if (initialData) {
-            setTitle(initialData.title || "");
-            setContent(initialData.content || "");
-            setCategory(initialData.category || "general");
-        }
-    }, [initialData]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -52,8 +44,8 @@ const TipForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" }) =>
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-5 max-w-xl">
-            {error && <div className="text-sm text-white bg-red-500 rounded-lg px-4 py-2">{error}</div>}
+        <form onSubmit={handleSubmit} className="admin-form max-w-3xl space-y-5">
+            {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
             <div>
                 <label className="block text-sm text-text-secondary mb-1">Cover Image</label>
@@ -113,7 +105,7 @@ const TipForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" }) =>
             <button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60"
+                className="w-full rounded-xl bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800 disabled:opacity-60 sm:w-auto"
             >
                 {submitting ? "Saving..." : submitLabel}
             </button>

@@ -405,6 +405,42 @@ export const getSavedCommunityOutfits = async (req, res, next) => {
     try {
         const { page, limit, skip } = parsePagination(req.query);
 
+        if (req.query.order === "outfitLatest") {
+            const savedIds = await CommunitySave.distinct("outfit", { user: req.user.id });
+            const query = {
+                _id: { $in: savedIds },
+                isVisible: true,
+                $or: [
+                    { visibility: { $ne: "private" } },
+                    { user: req.user.id, visibility: "private" },
+                ],
+            };
+            const [outfits, total] = await Promise.all([
+                CommunityOutfit.find(query)
+                    .sort({ createdAt: -1, _id: -1 })
+                    .skip(skip)
+                    .limit(limit)
+                    .populate([
+                        { path: "user", select: "name profilePicture" },
+                        { path: "outfitType", select: "name slug" },
+                        { path: "occasion", select: "name slug" },
+                    ]),
+                CommunityOutfit.countDocuments(query),
+            ]);
+
+            return res.status(200).json({
+                success: true,
+                outfits,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit),
+                    hasMore: skip + outfits.length < total,
+                },
+            });
+        }
+
         const saves = await CommunitySave.find({ user: req.user.id })
             .sort({ createdAt: -1, _id: -1 })
             .skip(skip)

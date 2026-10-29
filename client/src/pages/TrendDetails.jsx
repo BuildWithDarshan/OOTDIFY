@@ -55,12 +55,13 @@ const TrendDetails = () => {
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 px-4 text-center">
         <p className="text-text-secondary">This trend couldn&apos;t be found.</p>
         <Link
-          to="/trends"
-          className="inline-flex items-center gap-2 text-sm text-accent-hover hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Trends
-        </Link>
+  to="/trends"
+  className="hidden items-center gap-2 text-sm text-accent-hover hover:underline"
+>
+  <ArrowLeft className="h-4 w-4" />
+  Back to Trends
+</Link>
+
       </div>
       </>
     );
@@ -153,14 +154,15 @@ const TrendDetails = () => {
 
       <div className="mx-auto mt-15 max-w-6xl px-4 py-6 sm:px-6 sm:py-10 md:px-10">
         <Link
-          to="/trends"
-          className="group mb-6 hidden items-center gap-2 rounded-full border border-transparent px-1 py-2 text-xs font-medium text-text-secondary transition-all duration-300 hover:gap-2.5 hover:text-accent-hover md:inline-flex md:text-sm"
-        >
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-bg transition-all duration-300 group-hover:border-accent group-hover:bg-bg-subtle">
-            <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
-          </span>
-          Back to Trends
-        </Link>
+  to="/trends"
+  className="group mb-6 hidden items-center gap-2 rounded-full border border-transparent px-1 py-2 text-xs font-medium text-text-secondary transition-all duration-300 hover:gap-2.5 hover:text-accent-hover md:text-sm"
+>
+  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-bg transition-all duration-300 group-hover:border-accent group-hover:bg-bg-subtle">
+    <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-300 group-hover:-translate-x-0.5" />
+  </span>
+  Back to Trends
+</Link>
+
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
           {/* Left: existing image, title and gender treatment */}

@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { Compass, Plus } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import TaxonomyForm from "../components/TaxonomyForm.jsx";
 import {
     getOccasions,
@@ -31,20 +33,12 @@ const ManageOccasions = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const loadOccasions = async () => {
-        setLoading(true);
-        try {
-            const data = await getOccasions();
-            setOccasions(data.occasions);
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to load occasions");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        loadOccasions();
+        let current = true;
+        getOccasions().then((data) => { if (current) setOccasions(data.occasions); })
+            .catch((err) => { if (current) setError(err.response?.data?.message || "Failed to load occasions"); })
+            .finally(() => { if (current) setLoading(false); });
+        return () => { current = false; };
     }, []);
 
     const handleAdd = () => {
@@ -88,15 +82,8 @@ const ManageOccasions = () => {
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-6">
-                <h1 className="font-display text-3xl text-text-primary">Occasions</h1>
-                <button
-                    onClick={handleAdd}
-                    className="bg-accent text-on-accent rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent-hover"
-                >
-                    + Add Occasion
-                </button>
-            </div>
+            <PageHeader icon={Compass} title="Occasions" description="Organize looks around the moments people dress for."
+                action={<button type="button" onClick={handleAdd} className="inline-flex items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800"><Plus size={17} /> Add occasion</button>} />
 
             {loading && <p className="text-text-secondary">Loading...</p>}
             {error && <p className="text-red-500">{error}</p>}
@@ -113,6 +100,7 @@ const ManageOccasions = () => {
 
             {formOpen && (
                 <TaxonomyForm
+                    key={editingItem?._id || "new"}
                     label="Occasion"
                     editingItem={editingItem}
                     onSubmit={handleSubmit}

@@ -1,47 +1,56 @@
-import {React, useEffect, useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
+import { ImagePlus, PackageCheck } from 'lucide-react';
 
 const GENDERS = ["men", "women"];
 const ITEM_TYPES = ["top","bottom","footwear","outerwear","accessory","other"]
 
-const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) => {
+const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) => {
+    const isNewItem = !initialData?._id;
 
-    const [name, setName] = useState("");
-    const [price, setPrice] = useState("");
-    const [referralLink, setReferralLink] = useState("");
-    const [shoppingSite, setShoppingSite] = useState("");
-    const [gender, setGender] = useState("men");
-    const [itemType, setItemType] = useState("top");
-    const [itemSubType, setItemSubType] = useState("");
-    const [brand, setBrand] = useState("");
-    const [isWardrobeEssential, setIsWardrobeEssential] = useState(false);
+    const [name, setName] = useState(initialData?.name ?? "");
+    const [price, setPrice] = useState(initialData?.price ?? "");
+    const [referralLink, setReferralLink] = useState(initialData?.referralLink ?? "");
+    const [shoppingSite, setShoppingSite] = useState(initialData?.shoppingSite ?? "");
+    const [gender, setGender] = useState(initialData?.gender ?? "men");
+    const [itemType, setItemType] = useState(initialData?.itemType ?? "top");
+    const [itemSubType, setItemSubType] = useState(initialData?.itemSubType ?? "");
+    const [brand, setBrand] = useState(initialData?.brand ?? "");
+    const [isWardrobeEssential, setIsWardrobeEssential] = useState(Boolean(initialData?.isWardrobeEssential));
     const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
+    const previewUrl = useRef("");
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        if(initialData) {
-            setName(initialData.name || "");
-            setPrice(initialData.price ?? "");
-            setReferralLink(initialData.referralLink || "");
-            setShoppingSite(initialData.shoppingSite || "");
-            setGender(initialData.gender || "men");
-            setItemType(initialData.itemType || "top");
-            setItemSubType(initialData.itemSubType || "");
-            setBrand(initialData.brand || "");
-            setIsWardrobeEssential(!!initialData.isWardrobeEssential);
-        }
-    },[initialData]);
+    useEffect(() => () => { if (previewUrl.current) URL.revokeObjectURL(previewUrl.current); }, []);
+    const changeImage = (event) => {
+        const file = event.target.files?.[0] ?? null;
+        if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+        previewUrl.current = file ? URL.createObjectURL(file) : "";
+        setImageFile(file);
+        setImagePreview(previewUrl.current);
+    };
 
     const handleSubmit = async(e) => {
         e.preventDefault();
         setError("");
 
-        if(!name || !price || !referralLink || !shoppingSite || !itemSubType) {
-            setError("Name, price, referral link, shopping site, and sub-type are all required");
+        if(!name.trim() || String(price).trim() === "" || !referralLink.trim() || !shoppingSite.trim() || !gender || !itemType || !itemSubType.trim()) {
+            setError("Name, price, referral link, shopping site, gender, type, and sub-type are all required");
             return;
         }
 
-        if(!initialData && !imageFile) {
+        if(!Number.isFinite(Number(price)) || Number(price) < 0) {
+            setError("Price must be a non-negative number");
+            return;
+        }
+
+        if(isNewItem && !imageFile) {
             setError("An item image is required");
+            return;
+        }
+
+        if(imageFile && imageFile.size > 4 * 1024 * 1024) {
+            setError("Choose an item image smaller than 4 MB");
             return;
         }
 
@@ -60,21 +69,22 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
         try {
             await onSubmit(formData);
         } catch (err) {
-            setError(err.response?.data?.message || "Something went wrong while saving the item");
+            setError(err.response?.data?.message || err.message || "Something went wrong while saving the item");
         }
     }
   return (
-    <form onSubmit={handleSubmit} className='space-y-5 max-w-xl'>
-      {error && <div className='text-sm text-white bg-red-500 rounded-lg px-4 py-2'>{error}</div>}
-      <div>
+    <form onSubmit={handleSubmit} className='admin-form max-w-4xl space-y-6 rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-8'>
+      {error && <div role="alert" className='rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>{error}</div>}
+      <div className="flex items-center gap-3 border-b border-green-100 pb-4"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-800"><PackageCheck size={19} /></span><div><h2 className="font-display text-2xl text-green-900">Product details</h2><p className="text-xs text-green-600">Add the exact item shoppers will find.</p></div></div>
+      <div className="grid gap-4 rounded-2xl bg-[#f8fbf7] p-4 sm:grid-cols-[110px_1fr] sm:items-center">
+        <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-white text-green-400">{imagePreview || initialData?.image?.url ? <img src={imagePreview || initialData.image.url} alt="Item preview" className="h-full w-full object-cover" /> : <ImagePlus size={26} />}</div>
+        <div>
         <label className='block text-sm text-text-secondary mb-1'>Item Image</label>
-        {initialData?.image?.url && !imageFile && (
-            <img src={initialData.image.url} alt={initialData.name} className='w-20 h-20 rounded-lg object-cover mb-2'/>
-        )}
-        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setImageFile(e.target.files[0])} className='w-full text-sm text-text-secondary'/>
-        {initialData && (
+        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={changeImage} className='w-full text-sm text-text-secondary'/>
+        {!isNewItem && (
             <p className='text-xs text-text-muted mt-1'>Leave empty to keep the current image.</p>
         )}
+        </div>
       </div>
 
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -112,8 +122,9 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
             <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
+                    <option value="" disabled>Choose gender</option>
                     {GENDERS.map((g) => (
                         <option key={g} value={g}>{g}</option>
                     ))}
@@ -125,7 +136,7 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
             <select
                     value={itemType}
                     onChange={(e) => setItemType(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
                     {ITEM_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -139,7 +150,7 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
                     type="text"
                     value={itemSubType}
                     onChange={(e) => setItemSubType(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
                     placeholder="t-shirt"
             />
         </div>
@@ -158,12 +169,19 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
         <button
             type="submit"
             disabled={submitting}
-            className="w-full sm:w-auto bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60"
+            className="w-full rounded-xl bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800 disabled:opacity-60 sm:w-auto"
         >
             {submitting ? "Saving..." : submitLabel}
         </button>
     </form>
   )
 }
+
+const ItemForm = (props) => (
+    <ItemFormFields
+        key={props.initialData?._id ?? props.initialData?.referralLink ?? "new-item"}
+        {...props}
+    />
+);
 
 export default ItemForm

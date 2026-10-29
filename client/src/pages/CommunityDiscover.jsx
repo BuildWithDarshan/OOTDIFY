@@ -18,6 +18,8 @@ import {
 } from "../services/communityInteractionService.js";
 import { getOccasions, getOutfitTypes } from "../services/taxonomyService.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import MasonryGridItem from "../components/Community/MasonryGridItem.jsx";
+import { getCommunityPreviewOutfits } from "../data/communityPreviewOutfits.js";
 
 const PAGE_SIZE = 20;
 
@@ -113,39 +115,6 @@ const selectCommonProps = {
     noOptionsMessage: () => "No matching options",
 };
 
-const MasonryGridItem = ({ children }) => {
-    const itemRef = useRef(null);
-
-    useEffect(() => {
-        const item = itemRef.current;
-        const grid = item?.parentElement;
-        const content = item?.firstElementChild;
-        if (!item || !grid || !content) return undefined;
-
-        const updateRowSpan = () => {
-            const styles = window.getComputedStyle(grid);
-            const rowHeight = Number.parseFloat(styles.gridAutoRows) || 8;
-            const rowGap = Number.parseFloat(styles.rowGap) || 0;
-            const contentHeight = content.getBoundingClientRect().height;
-            item.style.gridRowEnd = `span ${Math.max(
-                1,
-                Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)),
-            )}`;
-        };
-        const observer = new ResizeObserver(updateRowSpan);
-        observer.observe(content);
-        updateRowSpan();
-
-        return () => observer.disconnect();
-    }, []);
-
-    return (
-        <div ref={itemRef} className="self-start" style={{ gridRowEnd: "span 1" }}>
-            {children}
-        </div>
-    );
-};
-
 const CommunityCard = ({ outfit }) => {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
@@ -157,6 +126,7 @@ const CommunityCard = ({ outfit }) => {
         event.preventDefault();
         event.stopPropagation();
 
+        if (outfit.isDemo) return;
         if (!isAuthenticated) {
             navigate("/login");
             return;
@@ -180,12 +150,8 @@ const CommunityCard = ({ outfit }) => {
     };
 
     return (
-        <article className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)]">
-            <Link
-                to={`/community/${outfit._id}`}
-                className="block"
-                aria-label={`View ${outfit.title}`}
-            >
+        <article className="group relative overflow-hidden rounded-2xl border border-border/70 bg-bg shadow-[0_8px_28px_rgba(8,28,21,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(8,28,21,0.11)]">
+            {outfit.isDemo ? <div className="block">
                 <div className="relative overflow-hidden bg-bg-subtle">
                     <img
                         src={outfit.image?.url}
@@ -194,7 +160,13 @@ const CommunityCard = ({ outfit }) => {
                         className="block h-auto w-full transition duration-500 group-hover:scale-[1.025]"
                     />
                 </div>
-            </Link>
+            </div> : <Link to={`/community/${outfit._id}`} className="block" aria-label={`View ${outfit.title}`}>
+                <div className="relative overflow-hidden bg-bg-subtle">
+                    <img src={outfit.image?.url} alt={outfit.title} loading="lazy" className="block h-auto w-full transition duration-500 group-hover:scale-[1.025]" />
+                </div>
+            </Link>}
+
+            {outfit.isDemo && <span className="absolute left-2.5 top-2.5 rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#b3001b]">Preview</span>}
 
             {outfit.user?._id && (
                 <Link
@@ -217,7 +189,7 @@ const CommunityCard = ({ outfit }) => {
                 </Link>
             )}
 
-            <button
+            {!outfit.isDemo && <button
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
@@ -244,17 +216,17 @@ const CommunityCard = ({ outfit }) => {
                         className="h-4 w-4 transition-colors duration-150"
                     />
                 )}
-            </button>
+            </button>}
 
             <div className="p-3 sm:p-3.5">
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                    <Link
+                    {outfit.isDemo ? <span className="min-w-0 flex-1 truncate font-display text-base leading-tight text-text-primary sm:text-xl">{outfit.title}</span> : <Link
                         to={`/community/${outfit._id}`}
                         className="min-w-0 flex-1 truncate font-display text-base leading-tight text-text-primary sm:text-xl"
                     >
                         {outfit.title}
-                    </Link>
-                    <span className="inline-flex shrink-0 items-center gap-2 text-[11px] text-text-muted">
+                    </Link>}
+                    {!outfit.isDemo && <span className="inline-flex shrink-0 items-center gap-2 text-[11px] text-text-muted">
                         <span
                             className={`inline-flex items-center gap-1 ${
                                 outfit.isLiked ? "text-accent-hover" : ""
@@ -270,7 +242,7 @@ const CommunityCard = ({ outfit }) => {
                             <MessageCircle aria-hidden="true" className="h-3.5 w-3.5" />
                             {outfit.commentCount ?? 0}
                         </span>
-                    </span>
+                    </span>}
                 </div>
                 {saveError && (
                     <span role="status" className="mt-2 block text-[10px] text-red-700">
@@ -326,6 +298,7 @@ const CommunityDiscover = () => {
         () => ({ search, gender, category, occasion, sort }),
         [search, gender, category, occasion, sort],
     );
+    const showPreviewForQuery = !search && !gender && !category && !occasion && sort === "latest";
     const categoryOptions = categories.map((item) => ({
         value: item._id,
         label: item.name,
@@ -390,16 +363,24 @@ const CommunityDiscover = () => {
         })
             .then(async (data) => {
                 if (cancelled || requestId !== requestIdRef.current) return;
-                const pageOutfits = isAuthenticated
+                let pageOutfits = isAuthenticated
                     ? await attachCommunityInteractionStates(data.outfits || [])
                     : data.outfits || [];
+                if (pageOutfits.length < PAGE_SIZE && !data.pagination?.hasMore && showPreviewForQuery && import.meta.env.DEV) {
+                    const previews = await getCommunityPreviewOutfits();
+                    pageOutfits = [...pageOutfits, ...previews.slice(0, PAGE_SIZE - pageOutfits.length)];
+                }
                 if (cancelled || requestId !== requestIdRef.current) return;
                 setOutfits(pageOutfits);
-                setHasMore(Boolean(data.pagination?.hasMore));
+                setHasMore(pageOutfits.some((outfit) => outfit.isDemo) ? false : Boolean(data.pagination?.hasMore));
             })
-            .catch(() => {
+            .catch(async () => {
                 if (!cancelled && requestId === requestIdRef.current) {
-                    setError(true);
+                    const previewOutfits = showPreviewForQuery ? await getCommunityPreviewOutfits() : [];
+                    if (cancelled || requestId !== requestIdRef.current) return;
+                    setOutfits(previewOutfits);
+                    setHasMore(false);
+                    setError(previewOutfits.length === 0);
                 }
             })
             .finally(() => {
@@ -411,7 +392,7 @@ const CommunityDiscover = () => {
         return () => {
             cancelled = true;
         };
-    }, [isAuthenticated, query, refreshKey]);
+    }, [isAuthenticated, query, refreshKey, showPreviewForQuery]);
 
     const loadMore = useCallback(async () => {
         if (loading || loadingMoreRef.current || !hasMore || error) return;
@@ -871,7 +852,7 @@ const CommunityDiscover = () => {
 
                 <div ref={sentinelRef} aria-hidden="true" className="h-1" />
 
-                {!hasMore && outfits.length > 0 && !loading && (
+                {!hasMore && outfits.length > 0 && !loading && !outfits.some((outfit) => outfit.isDemo) && (
                     <p className="py-8 text-center text-xs uppercase tracking-[0.16em] text-text-muted">
                         You’re all caught up
                     </p>
