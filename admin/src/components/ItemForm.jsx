@@ -1,4 +1,5 @@
-import {useState} from 'react'
+import {useEffect, useRef, useState} from 'react'
+import { ImagePlus, PackageCheck } from 'lucide-react';
 
 const GENDERS = ["men", "women"];
 const ITEM_TYPES = ["top","bottom","footwear","outerwear","accessory","other"]
@@ -16,7 +17,18 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
     const [brand, setBrand] = useState(initialData?.brand ?? "");
     const [isWardrobeEssential, setIsWardrobeEssential] = useState(Boolean(initialData?.isWardrobeEssential));
     const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
+    const previewUrl = useRef("");
     const [error, setError] = useState("");
+
+    useEffect(() => () => { if (previewUrl.current) URL.revokeObjectURL(previewUrl.current); }, []);
+    const changeImage = (event) => {
+        const file = event.target.files?.[0] ?? null;
+        if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+        previewUrl.current = file ? URL.createObjectURL(file) : "";
+        setImageFile(file);
+        setImagePreview(previewUrl.current);
+    };
 
     const handleSubmit = async(e) => {
         e.preventDefault();
@@ -61,17 +73,18 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
         }
     }
   return (
-    <form onSubmit={handleSubmit} className='space-y-5 max-w-xl'>
-      {error && <div className='text-sm text-white bg-red-500 rounded-lg px-4 py-2'>{error}</div>}
-      <div>
+    <form onSubmit={handleSubmit} className='admin-form max-w-4xl space-y-6 rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-8'>
+      {error && <div role="alert" className='rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>{error}</div>}
+      <div className="flex items-center gap-3 border-b border-green-100 pb-4"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-800"><PackageCheck size={19} /></span><div><h2 className="font-display text-2xl text-green-900">Product details</h2><p className="text-xs text-green-600">Add the exact item shoppers will find.</p></div></div>
+      <div className="grid gap-4 rounded-2xl bg-[#f8fbf7] p-4 sm:grid-cols-[110px_1fr] sm:items-center">
+        <div className="flex h-28 w-full items-center justify-center overflow-hidden rounded-xl bg-white text-green-400">{imagePreview || initialData?.image?.url ? <img src={imagePreview || initialData.image.url} alt="Item preview" className="h-full w-full object-cover" /> : <ImagePlus size={26} />}</div>
+        <div>
         <label className='block text-sm text-text-secondary mb-1'>Item Image</label>
-        {!isNewItem && initialData?.image?.url && !imageFile && (
-            <img src={initialData.image.url} alt={initialData.name} className='w-20 h-20 rounded-lg object-cover mb-2'/>
-        )}
-        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} className='w-full text-sm text-text-secondary'/>
+        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={changeImage} className='w-full text-sm text-text-secondary'/>
         {!isNewItem && (
             <p className='text-xs text-text-muted mt-1'>Leave empty to keep the current image.</p>
         )}
+        </div>
       </div>
 
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
@@ -109,7 +122,7 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
             <select
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
                     <option value="" disabled>Choose gender</option>
                     {GENDERS.map((g) => (
@@ -123,7 +136,7 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
             <select
                     value={itemType}
                     onChange={(e) => setItemType(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
             >
                     {ITEM_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
@@ -137,7 +150,7 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
                     type="text"
                     value={itemSubType}
                     onChange={(e) => setItemSubType(e.target.value)}
-                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent"
                     placeholder="t-shirt"
             />
         </div>
@@ -156,7 +169,7 @@ const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save
         <button
             type="submit"
             disabled={submitting}
-            className="w-full sm:w-auto bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60"
+            className="w-full rounded-xl bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800 disabled:opacity-60 sm:w-auto"
         >
             {submitting ? "Saving..." : submitLabel}
         </button>

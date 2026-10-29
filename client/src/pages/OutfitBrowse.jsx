@@ -1,11 +1,17 @@
-import { useEffect, useRef, useState } from "react";
-import { getOutfits } from "../services/outfitService.js";
+import { useEffect, useState } from "react";
+import { getOOTD, getOutfits } from "../services/outfitService.js";
 import { useFilters } from "../hooks/useFilters.js";
 import PageHero from "../components/Common/PageHero.jsx";
 import OutfitCard from "../components/Outfit/OutfitCard.jsx";
 import OutfitFilterBar from "../components/Outfit/OutfitFilterBar.jsx";
-import OOTDModal from "../components/Outfit/OOTDModal.jsx";
 import OOTDDocked from "../components/Outfit/OOTDDocked.jsx";
+
+const INDIA_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const indiaDayKey = () =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
+const millisecondsUntilIndiaMidnight = () =>
+  DAY_MS - ((Date.now() + INDIA_OFFSET_MS) % DAY_MS) + 1000;
 
 const OutfitCardSkeleton = ({ index }) => (
   <div
@@ -41,78 +47,71 @@ const OutfitGridSkeleton = ({ searching }) => (
 
 const OutfitBrowse = ({ gender, hero }) => {
   const { filters, setFilter, clearFilters, activeCount } = useFilters();
-  const [outfits, setOutfits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
-  const sentinelRef = useRef(null);
-  const [modalTriggered, setModalTriggered] = useState(false);
-  const [dockedOutfit, setDockedOutfit] = useState(null);
+  const [result, setResult] = useState({ key: null, outfits: [], error: false });
+  const [featuredResult, setFeaturedResult] = useState({ gender: null, outfit: null });
+  const queryKey = JSON.stringify({ gender, ...filters });
+  const loading = result.key !== queryKey;
+  const { outfits, error } = result;
+  const featuredOutfit = featuredResult.gender === gender ? featuredResult.outfit : null;
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(false);
 
     getOutfits({ gender, ...filters })
       .then((data) => {
-        if (!cancelled) setOutfits(data.outfits || []);
+        if (!cancelled) setResult({ key: queryKey, outfits: data.outfits || [], error: false });
       })
       .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setResult({ key: queryKey, outfits: [], error: true });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [gender, filters]);
+  }, [gender, filters, queryKey]);
 
   useEffect(() => {
-    if (modalTriggered) return;
-    const el = sentinelRef.current;
-    if (!el) return;
+    let cancelled = false;
+    let dayKey = indiaDayKey();
+    let rolloverTimer;
 
-    let animationFrame = null;
-
-    const checkHeroEnd = () => {
-      if (animationFrame) return;
-
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = null;
-        const heroEndPosition = el.getBoundingClientRect().top;
-        const navigationOffset = 80;
-
-        if (heroEndPosition <= navigationOffset) {
-          setModalTriggered(true);
-          window.removeEventListener("scroll", checkHeroEnd);
-        }
-      });
+    const refreshFeaturedOutfit = () => {
+      dayKey = indiaDayKey();
+      getOOTD(gender)
+        .then((data) => {
+          if (!cancelled) setFeaturedResult({ gender, outfit: data.outfit || null });
+        })
+        .catch(() => {
+          if (!cancelled) setFeaturedResult({ gender, outfit: null });
+        });
+      window.clearTimeout(rolloverTimer);
+      rolloverTimer = window.setTimeout(refreshFeaturedOutfit, millisecondsUntilIndiaMidnight());
     };
 
-    window.addEventListener("scroll", checkHeroEnd, { passive: true });
-    checkHeroEnd();
-
-    return () => {
-      window.removeEventListener("scroll", checkHeroEnd);
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible" && indiaDayKey() !== dayKey) {
+        refreshFeaturedOutfit();
       }
     };
-  }, [modalTriggered]);
+
+    refreshFeaturedOutfit();
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(rolloverTimer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [gender]);
 
   return (
     <div>
       <PageHero {...hero} />
-      <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
-
-      <OOTDModal gender={gender} active={modalTriggered} onSettle={setDockedOutfit} />
-
-      <div className="px-4 sm:px-6 md:px-10 py-8 sm:py-10 max-w-6xl mx-auto">
-        {dockedOutfit && (
-          <OOTDDocked key={dockedOutfit._id} outfit={dockedOutfit} />
+      <div className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-6 sm:py-10 lg:px-8 xl:px-10">
+        {featuredOutfit && (
+          <div className="mx-auto max-w-7xl">
+            <OOTDDocked key={featuredOutfit._id} outfit={featuredOutfit} />
+          </div>
         )}
 
         <OutfitFilterBar filters={filters} setFilter={setFilter} clearFilters={clearFilters} activeCount={activeCount} />

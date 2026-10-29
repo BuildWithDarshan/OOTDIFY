@@ -1,6 +1,9 @@
 import {useState} from 'react';
+import { CheckCircle2, LockKeyhole, Save, Settings2, UserRound } from 'lucide-react';
 import api from "../services/api.js";
-import { useAdminAuth } from '../context/AdminAuthContext.jsx';
+import { useAdminAuth } from '../context/useAdminAuth.js';
+
+const fieldClass = 'w-full rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-900 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100';
 
 const Settings = () => {
 
@@ -52,6 +55,7 @@ const Settings = () => {
 
         if(newPassword !== confirmNewPassword) {
             setPasswordError("New password and confirmation do not match");
+            return;
         }
 
         if(newPassword.length < 6) {
@@ -74,70 +78,71 @@ const Settings = () => {
         }
     }
   return (
-    <div className='max-w-xl space-y-10'>
-        <h1 className='font-display text-3xl text-text-primary'>Settings</h1>
+    <div className='max-w-5xl space-y-6'>
+        <div className="flex items-start gap-4"><span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-700 text-white"><Settings2 size={22} /></span><div><p className="text-[10px] font-bold uppercase tracking-widest text-green-500">Your workspace</p><h1 className='font-display text-4xl text-green-900'>Settings</h1><p className="mt-1 text-sm text-green-600">Manage your account and sign-in details.</p></div></div>
+        <div className="rounded-3xl bg-green-800 p-5 text-white sm:p-7"><p className="text-xs uppercase tracking-widest text-green-200">Signed in as</p><p className="mt-2 font-display text-3xl">{admin?.name || 'Administrator'}</p><p className="mt-1 text-sm text-green-100">{admin?.email}</p></div>
 
-        <section>
-            <h2 className='font-display text-xl text-text-primary mb-1'>Profile</h2>
-            <p className='text-sm text-text-secondary mb-4'>Your account details as an OOTDIFY admin.</p>
+        <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-100 text-green-800"><UserRound size={19} /></span><div><h2 className='font-display text-2xl text-green-900'>Profile</h2><p className='text-xs text-green-600'>Your OOTDIFY admin identity.</p></div></div>
 
             <form onSubmit={handleProfileSubmit} className='space-y-4'>
                 {profileError && (
-                    <div className='text-sm text-white bg-red-500 rounded-lg px-4 py-2'>{profileError}</div>
+                    <div role="alert" className='rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>{profileError}</div>
                 )}
                 {profileSuccess && (
-                    <div className='text-sm text-white bg-green-600 rounded-lg px-4 py-2'>{profileSuccess}</div>
+                    <div role="status" className='flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800'><CheckCircle2 size={16} />{profileSuccess}</div>
                 )}
 
                 <div>
-                    <label className='block text-sm text-text-secondary mb-1'>Name</label>
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent'/>
+                    <label htmlFor="admin-name" className='mb-1 block text-sm font-medium text-green-700'>Name</label>
+                    <input id="admin-name" type="text" value={name} onChange={(e) => setName(e.target.value)} className={fieldClass}/>
                 </div>
 
                 <div>
-                    <label className='block text-sm text-text-secondary mb-1'>Email</label>
-                    <input type="email" value={admin?.email || ""} disabled className='w-full border border-border rounded-lg px-3 py-2 text-text-muted bg-bg-subtle cursor-not-allowed'/>
+                    <label htmlFor="admin-email" className='mb-1 block text-sm font-medium text-green-700'>Email</label>
+                    <input id="admin-email" type="email" value={admin?.email || ""} disabled className='w-full cursor-not-allowed rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-500'/>
                     <p className='text-xs text-text-muted mt-1'>Email changes aren't supported yet.</p>
                 </div>
 
-                <button type='submit' disabled={profileSubmitting} className='bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60'>
-                    {profileSubmitting ? "Saving..." : "Save Profile"}
+                <button type='submit' disabled={profileSubmitting} className='inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-5 py-3 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60 sm:w-auto'>
+                    <Save size={16} /> {profileSubmitting ? "Saving..." : "Save profile"}
                 </button>
             </form>
         </section>
 
-        <section>
-            <h2 className='font-display text-xl text-text-primary mb-1'>Change Password</h2>
-            <p className='text-sm text-text-secondary mb-4'>Update the password used to log into this admin panel.</p>
+        <section className="rounded-3xl border border-green-100 bg-white p-5 shadow-sm sm:p-7">
+            <div className="mb-5 flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-700"><LockKeyhole size={19} /></span><div><h2 className='font-display text-2xl text-green-900'>Password</h2><p className='text-xs text-green-600'>Update your admin sign-in password.</p></div></div>
 
             <form onSubmit={handlePasswordSubmit} className='space-y-4'>
                 {passwordError && (
-                    <div className='text-sm text-white bg-red-500 rounded-lg px-4 py-2'>{passwordError}</div>
+                    <div role="alert" className='rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700'>{passwordError}</div>
                 )}
                 {passwordSuccess && (
-                    <div className="text-sm text-white bg-green-600 rounded-lg px-4 py-2">{passwordSuccess}</div>
+                    <div role="status" className="flex items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800"><CheckCircle2 size={16} />{passwordSuccess}</div>
                 )}
 
                 <div>
-                    <label className='block text-sm text-text-secondary mb-1'>Current Password</label>
-                    <input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent' autoComplete='current-password'/>
+                    <label htmlFor="current-password" className='mb-1 block text-sm font-medium text-green-700'>Current password</label>
+                    <input id="current-password" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className={fieldClass} autoComplete='current-password'/>
                 </div>
 
                 <div>
-                    <label className='block text-sm text-text-secondary mb-1'>New Password</label>
-                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent' autoComplete='new-password'/>
+                    <label htmlFor="new-password" className='mb-1 block text-sm font-medium text-green-700'>New password</label>
+                    <input id="new-password" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className={fieldClass} autoComplete='new-password'/>
                 </div>
 
                 <div>
-                    <label className='block text-sm text-text-secondary mb-1'>Confirm New Password</label>
-                    <input type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent' autoComplete='new-password'/>
+                    <label htmlFor="confirm-password" className='mb-1 block text-sm font-medium text-green-700'>Confirm new password</label>
+                    <input id="confirm-password" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className={fieldClass} autoComplete='new-password'/>
                 </div>
 
-                <button type="submit" disabled={passwordSubmitting} className='bg-accent text-on-accent rounded-lg px-6 py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60'>
-                    {passwordSubmitting ? "Saving" : "Change Password"}
+                <button type="submit" disabled={passwordSubmitting} className='inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-5 py-3 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60 sm:w-auto'>
+                    <LockKeyhole size={16} /> {passwordSubmitting ? "Saving..." : "Change password"}
                 </button>
             </form>
         </section>
+        </div>
     </div>
   )
 }

@@ -1,21 +1,11 @@
-import {React, useEffect, useState} from 'react'
+import {useState} from 'react'
+import { X } from 'lucide-react';
 
 const TaxonomyForm = ({label, editingItem, onSubmit, onClose, submitting}) => {
 
-    const [name, setName] = useState("");
-    const [icon, setIcon] = useState("");
+    const [name, setName] = useState(editingItem?.name || "");
+    const [icon, setIcon] = useState(editingItem?.icon || "");
     const [error, setError] = useState("");
-
-    useEffect(() => {
-        if(editingItem) {
-            setName(editingItem.name || "");
-            setIcon(editingItem.icon || "");
-        }else {
-            setName("");
-            setIcon("");
-        }
-        setError("")
-    },[editingItem])
 
     const handleSubmit = async(e) => {
         e.preventDefault();
@@ -34,11 +24,11 @@ const TaxonomyForm = ({label, editingItem, onSubmit, onClose, submitting}) => {
     }
 
   return (
-    <div className='fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4'>
-       <div className='bg-bg border border-border rounded-xl w-full max-w-sm p-6'>
-        <h2 className='font-display text-2xl text-text-primary mb-4'>
+    <div className='fixed inset-0 z-50 flex items-center justify-center bg-green-950/50 p-4 backdrop-blur-sm'>
+       <div className='w-full max-w-sm rounded-3xl border border-green-100 bg-white p-6 shadow-2xl'>
+        <div className="mb-5 flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-widest text-green-500">Collection labels</p><h2 className='font-display text-3xl text-green-900'>
             {editingItem ? `Edit ${label}` : `Add ${label}`}
-        </h2>
+        </h2></div><button type="button" onClick={onClose} aria-label="Close form" className="rounded-lg p-2 text-green-700 hover:bg-green-50"><X size={18} /></button></div>
 
         <form className='space-y-4' onSubmit={handleSubmit}>
             {error && (
@@ -48,21 +38,21 @@ const TaxonomyForm = ({label, editingItem, onSubmit, onClose, submitting}) => {
                 <label className='block text-sm text-text-secondary mb-1'>
                     Name
                 </label>
-                <input type="text" valye={name} onChange={(e) => setName(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent' placeholder='e.g. Casual'/>
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className='w-full rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-900 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100' placeholder='e.g. Casual'/>
             </div>
 
             <div>
                 <label className='block text-sm text-text-secondary mb-1'>
                     Icon URL
                 </label>
-                <input type="text" valye={icon} onChange={(e) => setIcon(e.target.value)} className='w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-none focus:border-accent' placeholder='https://...'/>
+                <input type="url" value={icon} onChange={(e) => setIcon(e.target.value)} className='w-full rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-900 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100' placeholder='https://...'/>
             </div>
 
             <div className='flex gap-3 pt-2'>
-                <button type="button" onClick={onClose} className='flex-1 border border-border rounded-lg py-2.5 text-text-secondary'>
+                <button type="button" onClick={onClose} className='flex-1 rounded-xl border border-green-200 py-2.5 text-sm font-semibold text-green-800 hover:bg-green-50'>
                     Cancel
                 </button>
-                <button type="submit" disabled={submitting} className='flex-1 bg-accent text-on-accent rounded-lg py-2.5 font-medium hover:bg-accent-hover disabled:opacity-60'>
+                <button type="submit" disabled={submitting} className='flex-1 rounded-xl bg-green-700 py-2.5 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-60'>
                     {submitting ? "Saving..." : "Save"}
                 </button>
             </div>

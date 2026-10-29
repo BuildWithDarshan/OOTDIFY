@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ItemForm from '../components/ItemForm.jsx'
+import FormPageShell from '../components/FormPageShell.jsx'
+import { FolderHeart } from 'lucide-react'
 import { createItem } from "../services/itemService.js"
 
 const AddItem = () => {
@@ -18,10 +20,9 @@ const AddItem = () => {
         }
     }
   return (
-    <div>
-      <h1 className='font-display text-3xl text-text-primary mb-6'>Add Item</h1>
+    <FormPageShell icon={FolderHeart} title="Add catalog item" description="Save a product with its image, price, and retailer link." backTo="/items">
       <ItemForm onSubmit={handleSubmit} submitting={submitting} submitLabel='Create Item'/>
-    </div>
+    </FormPageShell>
   )
 }
 

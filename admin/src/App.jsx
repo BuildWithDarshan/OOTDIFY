@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useAdminAuth } from "./context/AdminAuthContext.jsx";
+import { useAdminAuth } from "./context/useAdminAuth.js";
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import AdminLayout from "./layouts/AdminLayout.jsx";

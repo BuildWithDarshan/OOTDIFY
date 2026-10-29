@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { ArrowLeft, CheckCircle2, CircleAlert, Save, Sparkles } from "lucide-react";
 import {
     createOccasion, createOutfitType, getOccasions, getOutfitTypes,
 } from "../services/taxonomyService.js";
 
 const fieldClass =
-    "w-full rounded-lg border border-border bg-bg px-3 py-2 text-text-primary focus:border-accent focus:outline-none";
+    "w-full rounded-xl border border-green-200 bg-white px-4 py-3 text-sm text-green-900 outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100";
 
 function matchingOption(options, suggestion) {
     const name = String(suggestion ?? "").trim().toLowerCase();
@@ -157,30 +158,38 @@ export default function OutfitReviewPanel({
     };
 
     return (
-        <section aria-labelledby="outfit-review-heading" className="space-y-5 rounded-xl border border-border bg-bg p-4 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 id="outfit-review-heading" className="font-display text-2xl text-text-primary">
-                    Review and save outfit
-                </h2>
+        <section aria-labelledby="outfit-review-heading" className="overflow-hidden rounded-3xl border border-green-100 bg-white shadow-lg shadow-green-800/5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-green-100 bg-green-50/60 px-5 py-5 sm:px-8">
+                <div className="flex items-center gap-3">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-green-700 text-white"><CheckCircle2 size={21} /></span>
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-green-600">Step 04 · Final review</p>
+                        <h2 id="outfit-review-heading" className="font-display text-3xl text-green-900">The finished look</h2>
+                    </div>
+                </div>
                 <button type="button" onClick={onBack} disabled={saving}
-                    className="rounded-lg border border-border px-3 py-2 text-sm text-text-primary disabled:opacity-60">
-                    Back to draft
+                    className="inline-flex items-center gap-2 rounded-xl border border-green-200 bg-white px-4 py-2.5 text-sm font-semibold text-green-800 hover:bg-green-50 disabled:opacity-60">
+                    <ArrowLeft size={16} /> Back to garments
                 </button>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-[180px_1fr]">
+            <div className="space-y-6 p-5 sm:p-8">
+            <div className="grid gap-5 rounded-2xl border border-green-100 bg-[#f8fbf7] p-4 sm:grid-cols-[180px_1fr]">
                 {imagePreview && <img src={imagePreview} alt="Outfit cover preview"
-                    className="max-h-64 w-full rounded-lg border border-border object-contain" />}
+                    className="max-h-64 w-full rounded-xl bg-white object-contain" />}
                 <div className="space-y-2 text-sm text-text-secondary">
-                    <p className="text-lg font-medium text-text-primary">{title || "Untitled outfit"}</p>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-800"><Sparkles size={12} /> Outfit draft</span>
+                    <p className="font-display text-3xl text-green-900">{title || "Untitled outfit"}</p>
                     <p>{outfitDraft.description || "No description"}</p>
-                    <p>Gender: {gender || "Not chosen"} · Season: {outfitDraft.seasonSuggestion || "all-season"}</p>
-                    <p>Cover image: {imageFile?.name || "Not chosen"}</p>
+                    <p className="pt-1 text-xs font-semibold uppercase tracking-wide text-green-600">
+                        {gender || "Gender needed"} · {outfitDraft.seasonSuggestion || "all-season"}
+                    </p>
+                    <p className="text-xs text-green-600">Cover: {imageFile?.name || "Not chosen"}</p>
                 </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
+                <div className="space-y-2 rounded-2xl border border-green-100 p-4">
                     <label className="block space-y-1 text-sm text-text-secondary">
                         <span>Occasion {outfitDraft.occasionSuggestion && `(suggested: ${outfitDraft.occasionSuggestion})`}</span>
                         <select value={occasionId} onChange={(event) => onOccasionChange(event.target.value)}
@@ -196,12 +205,12 @@ export default function OutfitReviewPanel({
                             onChange={(event) => setNewOccasion(event.target.value)}
                             placeholder="e.g. Casual" className={fieldClass} />
                         <button type="submit" disabled={!newOccasion.trim() || Boolean(adding) || saving}
-                            className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm text-text-primary disabled:opacity-60">
+                            className="shrink-0 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100 disabled:opacity-60">
                             {adding === "occasion" ? "Adding..." : "Add occasion"}
                         </button>
                     </form>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-2 rounded-2xl border border-green-100 p-4">
                     <label className="block space-y-1 text-sm text-text-secondary">
                         <span>Outfit type {outfitDraft.outfitTypeSuggestion && `(suggested: ${outfitDraft.outfitTypeSuggestion})`}</span>
                         <select value={outfitTypeId} onChange={(event) => onOutfitTypeChange(event.target.value)}
@@ -217,7 +226,7 @@ export default function OutfitReviewPanel({
                             onChange={(event) => setNewOutfitType(event.target.value)}
                             placeholder="e.g. Streetwear" className={fieldClass} />
                         <button type="submit" disabled={!newOutfitType.trim() || Boolean(adding) || saving}
-                            className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm text-text-primary disabled:opacity-60">
+                            className="shrink-0 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-800 hover:bg-green-100 disabled:opacity-60">
                             {adding === "outfit type" ? "Adding..." : "Add outfit type"}
                         </button>
                     </form>
@@ -225,21 +234,33 @@ export default function OutfitReviewPanel({
             </div>
 
             <div className="space-y-3">
-                <h3 className="font-medium text-text-primary">Selected products ({choices.filter(Boolean).length}/{itemSuggestions.length})</h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="font-display text-2xl text-green-900">Selected pieces</h3>
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
+                        {choices.filter(Boolean).length}/{itemSuggestions.length} ready
+                    </span>
+                </div>
                 {itemSuggestions.map((garment, index) => {
                     const item = choices[index];
-                    return <div key={garment.localSlotId} className="flex items-center gap-3 rounded-lg border border-border p-3">
-                        {item?.image?.url && <img src={item.image.url} alt="" className="h-14 w-14 rounded object-cover" />}
+                    return <div key={garment.localSlotId} className={`flex items-center gap-3 rounded-xl border p-3 ${
+                        item ? "border-green-200 bg-white" : "border-amber-200 bg-amber-50"
+                    }`}>
+                        {item?.image?.url ? <img src={item.image.url} alt="" className="h-14 w-14 rounded-lg object-cover" /> :
+                            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700"><CircleAlert size={20} /></span>}
                         <div className="min-w-0 flex-1 text-sm">
-                            <p className="font-medium text-text-primary">{index + 1}. {garment.name}</p>
+                            <p className="font-semibold text-green-900">{index + 1}. {garment.name}</p>
                             <p className={item ? "text-text-secondary" : "text-amber-700"}>
                                 {item ? `${item.name} · ${item.shoppingSite} · ₹${item.price}` : "No saved item selected"}
                             </p>
                         </div>
+                        {item && <CheckCircle2 size={18} className="shrink-0 text-green-600" />}
                     </div>;
                 })}
-                <p className="text-sm font-medium text-text-primary">Estimated total: ₹{totalPrice.toLocaleString("en-IN")}</p>
-                <p className="text-xs text-text-muted">The server will calculate the final total from the saved item prices.</p>
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-green-800 px-5 py-4 text-white">
+                    <span className="text-sm">Estimated outfit total</span>
+                    <strong className="text-xl">₹{totalPrice.toLocaleString("en-IN")}</strong>
+                </div>
+                <p className="text-xs text-text-muted">The server calculates the final total from saved item prices.</p>
             </div>
 
             {loading && <p role="status" className="text-sm text-text-secondary">Loading outfit options...</p>}
@@ -249,14 +270,15 @@ export default function OutfitReviewPanel({
                     Reload options
                 </button>
             </div>}
-            {validationMessage && !loading && <p role="alert" className="text-sm text-amber-700">{validationMessage}</p>}
-            {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+            {validationMessage && !loading && <p role="alert" className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"><CircleAlert size={17} className="mt-0.5 shrink-0" /> {validationMessage}</p>}
+            {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
             <form onSubmit={handleSubmit}>
                 <button type="submit" disabled={saving || loading || Boolean(validationMessage) || Boolean(error && occasions.length === 0)}
-                    className="rounded-lg bg-accent px-5 py-2.5 font-medium text-on-accent disabled:cursor-not-allowed disabled:opacity-60">
-                    {saving ? "Saving outfit..." : "Save outfit"}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+                    <Save size={17} /> {saving ? "Saving outfit..." : "Save this outfit"}
                 </button>
             </form>
+            </div>
         </section>
     );
 }

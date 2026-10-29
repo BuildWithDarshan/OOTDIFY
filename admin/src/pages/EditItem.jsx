@@ -1,6 +1,8 @@
-import {React, useEffect, useState} from 'react'
+import {useEffect, useState} from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import ItemForm from '../components/ItemForm.jsx'
+import FormPageShell from '../components/FormPageShell.jsx'
+import { FolderHeart } from 'lucide-react'
 import { getItemById, updateItem } from '../services/itemService.js'
 
 const EditItem = () => {
@@ -39,10 +41,9 @@ const EditItem = () => {
     if(loading) return <p className='text-text-secondary'>Loading...</p>
     if(error) return <p className='text-red-500'>{error}</p>
   return (
-    <div>
-      <h1 className='font-display text-3xl text-text-primary mb-6'>Edit Item</h1>
+    <FormPageShell icon={FolderHeart} title="Edit catalog item" description="Keep product details accurate for every outfit that uses it." backTo="/items">
       <ItemForm initialData={item} onSubmit={handleSubmit} submitting={submitting} submitLabel='Save Changes'/>
-    </div>
+    </FormPageShell>
   )
 }
 

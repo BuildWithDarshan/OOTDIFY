@@ -53,6 +53,10 @@ const outfitSchema = new mongoose.Schema(
         ootdDate: {
             type: Date,
         },
+        lastOOTDAt: {
+            type: Date,
+            default: null,
+        },
         isTrending : {
             type: Boolean,
             default: false,

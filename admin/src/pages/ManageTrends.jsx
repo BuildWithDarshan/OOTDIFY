@@ -1,6 +1,8 @@
 import {useState, useEffect} from 'react';
 import {Link} from "react-router-dom";
+import { BarChart3, Plus, X } from "lucide-react";
 import DataTable from "../components/DataTable.jsx";
+import PageHeader from "../components/PageHeader.jsx";
 import TrendForm from '../components/TrendForm.jsx';
 import { getTrends, updateTrend, deleteTrend } from '../services/trendService.js';
 
@@ -9,10 +11,10 @@ const columns = [
         key: "Cover Image",
         label: "Image",
         render: (row) => (
-            <img src={row.coverImage?.url} alt={row.title} className='w-10 h-10 rounded-md object-cover'/>
+            <img src={row.coverImage?.url} alt={row.title} className='h-12 w-12 rounded-xl object-cover'/>
         ),
     },
-    { key: "title", label: "Title" },
+    { key: "title", label: "Title", render: (row) => <span className="font-semibold text-green-900">{row.title}</span> },
     { key: "gender", label: "Gender" },
 ]
 
@@ -24,21 +26,12 @@ const ManageTrends = () => {
     const [editingTrend, setEditingTrend] = useState(null);
     const [submitting, setSubmitting] = useState(false);
 
-    const loadTrends = async() => {
-        setLoading(true);
-        try {
-            const data = await getTrends();
-            setTrends(data.trends);
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to load trends");
-        }
-        finally {
-            setLoading(false);
-        }
-    }
-
     useEffect(() => {
-        loadTrends();
+        let current = true;
+        getTrends().then((data) => { if (current) setTrends(data.trends); })
+            .catch((err) => { if (current) setError(err.response?.data?.message || "Failed to load trends"); })
+            .finally(() => { if (current) setLoading(false); });
+        return () => { current = false; };
     },[]);
 
 
@@ -64,13 +57,8 @@ const ManageTrends = () => {
     }
   return (
     <div>
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className="font-display text-3xl text-text-primary">Trends</h1>
-
-        <Link to='/trends/add' className='bg-accent text-on-accent rounded-lg px-4 py-2 text-sm font-medium hover:bg-accent-hover'>
-        + Add Trend
-        </Link>
-      </div>
+      <PageHeader icon={BarChart3} title="Trends" description="Create seasonal stories and keep your fashion edits current."
+        action={<Link to='/trends/add' className='inline-flex items-center gap-2 rounded-xl bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-800'><Plus size={17} /> Add trend</Link>} />
 
       {loading && <p className="text-text-secondary">Loading...</p>}
       {error && <p className="text-red-500">{error}</p>}
@@ -79,6 +67,7 @@ const ManageTrends = () => {
             <DataTable
                     columns={columns}
                     rows={trends}
+                    searchPlaceholder="Search trends or gender..."
                     onEdit={(trend) => setEditingTrend(trend)}
                     onDelete={handleDelete}
                     emptyMessage="No trends yet — add your first one."
@@ -86,14 +75,12 @@ const ManageTrends = () => {
       )}
 
       {editingTrend && (
-        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-bg border border-border rounded-xl w-full max-w-xl p-6 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-green-950/50 p-4 backdrop-blur-sm">
+            <div className="my-8 w-full max-w-xl rounded-3xl border border-green-100 bg-white p-5 shadow-2xl sm:p-7">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="font-display text-2xl text-text-primary">Edit Trend</h2>
 
-                    <button onClick={() => setEditingTrend(null)} className='text-text-secondary hover:text-text-primary'>
-                        ✕
-                    </button>
+                    <button type="button" onClick={() => setEditingTrend(null)} aria-label="Close edit trend" className='rounded-lg p-2 text-green-700 hover:bg-green-50'><X size={19} /></button>
                 </div>
                 <TrendForm initialData={editingTrend} onSubmit={handleUpdate} submitting={submitting} submitLabel='Save Changes'/>
             </div>

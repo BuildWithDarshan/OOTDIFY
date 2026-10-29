@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+@import "tailwindcss";
 
 @theme {
   --font-display: "Instrument Serif", serif;
@@ -17,6 +17,8 @@
   --color-green-600: #2D6A4F;
   --color-green-700: #1B4332;
   --color-green-800: #081C15;
+  --color-green-900: #10291E;
+  --color-green-950: #071711;
 
   --color-bg: var(--color-white);
   --color-bg-subtle: var(--color-green-50);
@@ -33,4 +35,53 @@
   --color-accent-subtle: var(--color-green-100);
 
   --color-on-accent: var(--color-white);
+}
+
+.admin-form input:not([type="checkbox"]):not([type="file"]),
+.admin-form select,
+.admin-form textarea {
+    width: 100%;
+    min-height: 44px;
+    border: 1px solid #b7e4c7;
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px 14px;
+    color: #1b4332;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+  }
+
+.admin-form input:not([type="checkbox"]):not([type="file"]):focus,
+.admin-form select:focus,
+.admin-form textarea:focus {
+    border-color: #40916c;
+    box-shadow: 0 0 0 3px #d8f3dc;
+  }
+
+.admin-form input[type="file"] {
+    width: 100%;
+    border: 1px dashed #95d5b2;
+    border-radius: 12px;
+    background: #f8fbf7;
+    padding: 12px;
+    font-size: 13px;
+  }
+
+.admin-form input[type="file"]::file-selector-button {
+    margin-right: 12px;
+    border: 0;
+    border-radius: 9px;
+    background: #1b4332;
+    padding: 8px 12px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+.admin-form input[type="checkbox"] { accent-color: #1b4332; }
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #40916c;
+  outline-offset: 3px;
 }

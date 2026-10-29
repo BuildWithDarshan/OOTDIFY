@@ -7,6 +7,7 @@ import CTASection from "../components/Home/CTASection.jsx";
 import CategorySplit from "../components/Home/CategorySplit.jsx";
 import WardrobeTeaser from "../components/Home/WardrobeTeaser.jsx";
 import CelebrityInspired from "../components/Home/CelebrityInspired.jsx";
+import CommunityStyleWall from "../components/Home/CommunityStyleWall.jsx";
 
 const Home = () => {
   return (
@@ -25,6 +26,7 @@ const Home = () => {
       <CategorySplit/>
       <CelebrityInspired/>
       <TrendingPreview/>
+      <CommunityStyleWall/>
       <WardrobeTeaser/>
       <CTASection/>
     </div>

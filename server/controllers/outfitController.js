@@ -3,6 +3,7 @@ import OutfitType from "../models/OutfitType.js";
 import Occasion from "../models/Occasion.js";
 import Item from "../models/Item.js";
 import { uploadImageToCloudinary, deleteImageCloudinary } from "../services/cloudinaryService.js";
+import { ensureDailyOOTD, rotateBothGenders, setManualOOTD } from "../services/ootdRotationService.js";
 
 const validateItemsAndGetTotal = async(itemIds) => {
     if(!Array.isArray(itemIds) || itemIds.length === 0) {
@@ -64,7 +65,7 @@ export const createOutfit = async(req,res) => {
 
         const {url, publicId} = await uploadImageToCloudinary(req.file.path, "ootdify/outfits");
 
-        const outfit = await Outfit.create({
+        let outfit = await Outfit.create({
             title: title.trim(),
             coverImage: {url, publicId},
             gender,
@@ -80,13 +81,7 @@ export const createOutfit = async(req,res) => {
         })
 
         if(isOOTD === "true") {
-            await Outfit.updateMany(
-                {gender, isOOTD: true},
-                {isOOTD: false, ootdDate: null}
-            );
-            outfit.isOOTD = true;
-            outfit.ootdDate = new Date();
-            await outfit.save();
+            outfit = await setManualOOTD(outfit._id);
         }
 
         return res.status(201).json({
@@ -117,6 +112,10 @@ export const getOutfits = async(req,res) => {
         if (isTrending !== undefined) filter.isTrending = isTrending === "true";
         if (isCelebrityInspired !== undefined) filter.isCelebrityInspired = isCelebrityInspired === "true";
         if (isOOTD !== undefined) filter.isOOTD = isOOTD === "true";
+        if (isOOTD === "true") {
+            if (gender === "men" || gender === "women") await ensureDailyOOTD(gender);
+            else await rotateBothGenders();
+        }
 
         if (search?.trim()) {
             const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -188,6 +187,10 @@ export const updateOutfit = async(req,res) => {
         const {title, gender, occasion, outfitType, season, description, items, isTrending,isCelebrityInspired, inspiredByLabel, isActive} = req.body;
 
         if(title !== undefined) outfit.title = title.trim();
+        if (gender !== undefined && gender !== outfit.gender && outfit.isOOTD) {
+            outfit.isOOTD = false;
+            outfit.ootdDate = null;
+        }
         if (gender !== undefined) outfit.gender = gender;
         if (season !== undefined) outfit.season = season;
         if (description !== undefined) outfit.description = description;
@@ -259,21 +262,10 @@ export const updateOutfit = async(req,res) => {
 
 export const setOutfitOfTheDay = async(req,res) => {
     try {
-        
-        const outfit = await Outfit.findById(req.params.id);
-
-        if(!outfit || !outfit.isActive) {
+        const outfit = await setManualOOTD(req.params.id);
+        if(!outfit) {
             return res.status(404).json({success: false, message:"Outfit not found"});
         }
-
-        await Outfit.updateMany(
-            {gender: outfit.gender, isOOTD: true, _id: { $ne: outfit._id}},
-            {isOOTD: false, ootdDate: null},
-        );
-
-        outfit.isOOTD = true;
-        outfit.ootdDate = new Date();
-        await outfit.save();
 
         return res.status(200).json({
             success: true,
@@ -281,6 +273,9 @@ export const setOutfitOfTheDay = async(req,res) => {
             outfit,
         });
     } catch (error) {
+        if (error.code === "OOTD_BUSY") {
+            return res.status(503).json({ success: false, message: error.message });
+        }
         if (error.name === "CastError") {
             return res.status(404).json({
                 success: false,

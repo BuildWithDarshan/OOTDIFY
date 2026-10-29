@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Link2 } from "lucide-react";
 import ItemForm from "./ItemForm.jsx";
 import { createItem } from "../services/itemService.js";
 import { previewProductImport } from "../services/productImportService.js";
@@ -147,19 +148,19 @@ export default function ProductImportPanel({ garment, outfitGender, selectedItem
     );
 
     return (
-        <section className="space-y-4 border-t border-border pt-4" aria-label="Product import">
+        <section className="space-y-4 border-t border-green-100 pt-4" aria-label="Product import">
             <button
                 type="button"
                 onClick={() => setOpen((current) => !current)}
                 disabled={saving}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-subtle"
+                className="inline-flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
                 aria-expanded={open}
             >
-                {open ? "Hide product import" : "Import a product URL"}
+                <Link2 size={16} /> {open ? "Hide product import" : "Import a product URL"}
             </button>
 
             {open && (
-                <div className="space-y-4 rounded-lg border border-border bg-bg-subtle p-4">
+                <div className="space-y-4 rounded-2xl border border-violet-100 bg-violet-50/40 p-4">
                     <div>
                         <h4 className="font-medium text-text-primary">Product from an approved source</h4>
                         <p className="mt-1 text-sm text-text-secondary">

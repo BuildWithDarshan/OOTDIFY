@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect, Children  } from "react";
+import { useState, useEffect } from "react";
 import api from "../services/api.js";
-
-const AdminAuthContext = createContext(null);
+import { AdminAuthContext } from "./adminAuthContext.js";
 
 const TOKEN_KEY = "ootdify_admin_token";
 
@@ -76,11 +75,3 @@ export const AdminAuthProvider =  ({children}) => {
         </AdminAuthContext.Provider>
     );  
 };
-
-export const useAdminAuth = () => {
-    const context = useContext(AdminAuthContext);
-    if(!context) {
-        throw new Error("useAdminAuth must be used within an AdminAuthProvider");
-    }
-    return context;
-}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Search } from "lucide-react";
 import { getItems } from "../services/itemService.js";
 
 export default function CatalogItemSearch({ garment, outfitGender, selectedItem, onSelect }) {
@@ -43,11 +44,11 @@ export default function CatalogItemSearch({ garment, outfitGender, selectedItem,
         <div className="space-y-3">
             <button type="button" onClick={open ? () => setOpen(false) : loadItems}
                 aria-expanded={open}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-subtle">
-                {open ? "Close saved item search" : "Search saved items"}
+                className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-900 hover:bg-sky-100">
+                <Search size={16} /> {open ? "Close saved item search" : "Search saved items"}
             </button>
 
-            {open && <div className="space-y-3 rounded-lg border border-border bg-bg-subtle p-3">
+            {open && <div className="space-y-3 rounded-2xl border border-sky-100 bg-sky-50/40 p-4">
                 <div className="flex flex-wrap items-end gap-2">
                     <label className="min-w-48 flex-1 text-sm text-text-secondary">
                         Search {gender || "outfit"} {garment.itemType} items

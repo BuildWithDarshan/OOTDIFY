@@ -4,6 +4,7 @@ import { authMiddleware } from "../middleware/authMiddleware.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
 import { normalizeClothingSuggestions, normalizeGarmentDiscoveryFields } from "../services/clothingSuggestions.js";
 import { getOutfitDescription } from "../services/outfitDescriptionService.js";
+import { getOutfitTitle } from "../services/outfitTitleService.js";
 import { requestOllamaAnalysis } from "../services/ollamaRequestService.js";
 
 const router = express.Router();
@@ -221,10 +222,13 @@ Allowed outerwear subtypes: jacket, blazer, coat, bomber-jacket, denim-jacket, c
 
  Write outfitDraft.description as one polished fashion sentence (roughly 18 to 35 words). Lead with the visible palette, silhouette, or style mood, then describe one or two distinctive clothing relationships. Make it specific to this image without enumerating every garment. Avoid the words "featuring", "ensemble", and "paired with". Do not mention accessories, brands, materials, or cultural influences unless clearly supported by the image.
 
+ Write outfitDraft.title as a distinctive editorial title of 2 to 4 words. Use the visible palette, silhouette, clothing details, or supported style mood. The tone should resemble titles such as "Urban Indigo Edge", "Old Money Affair", "Coastal Midnight Linen", and "Dark Luxe Streetwear", but create a new title specific to this image. Do not use generic phrases such as "Casual Yet Stylish", "Stylish Outfit", or "Casual Look". Do not list all garments, and do not invent a brand, location, material, or cultural influence. Keep styleSummary as a plain style description separate from the title.
+
 Return this structure:
 {
   "outfitDraft": {
-    "styleSummary": "Short style-focused title",
+    "title": "Short image-specific editorial title",
+    "styleSummary": "Brief style description, such as relaxed layered streetwear",
     "description": "One natural sentence about the visible outfit and how its garments work together.",
     "genderSuggestion": "men, women, or null",
     "occasionSuggestion": "Short suggestion or null",
@@ -364,9 +368,10 @@ Do not guess brands, materials, or hidden details. Use null for unknown fit or p
     });
 }
 
-        const styleSummary = analysis.outfitDraft.styleSummary.trim();
-
-        analysis.outfitDraft.title = styleSummary || "Clothing Look";
+        analysis.outfitDraft.title = getOutfitTitle(
+            analysis.outfitDraft,
+            analysis.itemSuggestions
+        );
         analysis.outfitDraft.description = getOutfitDescription(
             analysis.outfitDraft,
             analysis.itemSuggestions
