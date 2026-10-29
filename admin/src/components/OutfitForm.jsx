@@ -18,6 +18,7 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
     const [isCelebrityInspired, setIsCelebrityInspired] = useState(false);
     const [inspiredByLabel, setInspiredByLabel] = useState("");
     const [selectedItemIds, setSelectedItemIds] = useState([]);
+    const [itemSearch, setItemSearch] = useState("");
     const [coverImageFile, setCoverImageFile] = useState(null);
     const [error, setError] = useState("");
 
@@ -69,6 +70,13 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
     // Only show items matching the currently selected gender — an outfit
     // shouldn't mix men's and women's items
     const genderItems = allItems.filter((item) => item.gender === gender);
+    const searchWords = itemSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    const matchingItems = genderItems.filter((item) => {
+        const searchable = [item.name, item.brand, item.itemSubType, item.shoppingSite]
+            .filter(Boolean).join(" ").toLowerCase();
+        return searchWords.every((word) => searchable.includes(word));
+    });
+    const selectedItems = genderItems.filter((item) => selectedItemIds.includes(item._id));
 
     const toggleItem = (itemId) => {
         setSelectedItemIds((prev) =>
@@ -274,13 +282,37 @@ const OutfitForm = ({ initialData, onSubmit, submitting, submitLabel = "Save" })
                     </span>
                 </div>
 
+                {selectedItems.length > 0 && (
+                    <div className="mb-3 rounded-lg border border-border bg-bg-subtle p-3 text-sm text-text-primary">
+                        <p className="mb-2 font-medium">Selected ({selectedItems.length})</p>
+                        <div className="flex flex-wrap gap-2">
+                            {selectedItems.map((item) => (
+                                <button key={item._id} type="button" onClick={() => toggleItem(item._id)}
+                                    aria-label={`Remove ${item.name} from outfit`}
+                                    className="rounded-lg border border-border bg-bg px-2 py-1 text-left text-xs hover:border-accent">
+                                    {item.name} ×
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <label className="mb-2 block text-sm text-text-secondary">
+                    Search catalog items
+                    <input type="search" value={itemSearch} onChange={(event) => setItemSearch(event.target.value)}
+                        placeholder="Search name, brand, type, or store"
+                        className="mt-1 w-full rounded-lg border border-border bg-bg px-3 py-2 text-text-primary focus:border-accent focus:outline-none" />
+                </label>
+
                 {genderItems.length === 0 ? (
                     <p className="text-text-muted text-sm">
                         No {gender}'s items exist yet — add some in Items first.
                     </p>
+                ) : matchingItems.length === 0 ? (
+                    <p className="text-text-muted text-sm">No catalog items match this search for {gender}.</p>
                 ) : (
                     <div className="border border-border rounded-lg max-h-64 overflow-y-auto divide-y divide-border">
-                        {genderItems.map((item) => (
+                        {matchingItems.map((item) => (
                             <label
                                 key={item._id}
                                 className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-bg-subtle"

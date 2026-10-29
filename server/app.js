@@ -22,6 +22,7 @@ import communityReportRouter from "./routes/communityReportRoutes.js";
 import outfitAnalyzerRoutes from "./routes/outfitAnalyzerRoutes.js";
 import outfitCatalogSearchRoutes from "./routes/outfitCatalogSearchRoutes.js";
 import retailerSearchLinksRoutes from "./routes/retailerSearchLinksRoutes.js";
+import productImportRoutes from "./routes/productImportRoutes.js";
 
 const app = express();
 const allowedOrigins = (process.env.CORS_ORIGINS || "")
@@ -101,6 +102,8 @@ app.use("/api/outfit-analyzer",outfitAnalyzerRoutes);
 app.use("/api/outfit-catalog-search", outfitCatalogSearchRoutes);
 
 app.use("/api/retailer-search-links", retailerSearchLinksRoutes);
+
+app.use("/api/product-import", productImportRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

@@ -60,10 +60,10 @@
       {
           id: "snitch",
           displayName: "Snitch",
-          domains: ["snitch.co.in", "www.snitch.co.in"],
+          domains: ["www.snitch.com", "snitch.com"],
           sourceType: "brand",
           enabled: true,
-          searchUrlTemplate: "https://www.snitch.co.in/search?q={query}",
+          searchUrlTemplate: "https://www.snitch.com/search/{query}",
           supportsAutomatedSearch: false,
           imageImportSupported: false,
           affiliateSupported: false,
@@ -173,7 +173,7 @@
       {
           id: "levis",
           displayName: "Levi's",
-          domains: ["levi.com", "www.levi.com", "levis.in", "www.levis.in"],
+          domains: ["levi.in", "www.levi.in", "levi.com", "www.levi.com"],
           sourceType: "brand",
           enabled: true,
           searchUrlTemplate: "https://www.levi.com/IN/en_IN/search?q={query}",
@@ -184,7 +184,7 @@
       {
           id: "nike",
           displayName: "Nike",
-          domains: ["nike.com", "www.nike.com"],
+          domains: ["www.nike.in", "nike.in", "nike.com", "www.nike.com"],
           sourceType: "brand",
           enabled: true,
           searchUrlTemplate: "https://www.nike.com/in/w?q={query}",

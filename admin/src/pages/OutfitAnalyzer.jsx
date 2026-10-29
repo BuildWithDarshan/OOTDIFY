@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { analyzeOutfit } from "../services/outfitAnalyzerService.js";
 import { SearchOutfitCatalog } from "../services/outfitCatalogSearchService.js";
 import { getRetailerSearchLinks } from "../services/retailerSearchLinksService.js";
+import { createOutfit } from "../services/outfitService.js";
+import ProductImportPanel from "../components/ProductImportPanel.jsx";
+import CatalogItemSearch from "../components/CatalogItemSearch.jsx";
+import OutfitReviewPanel from "../components/OutfitReviewPanel.jsx";
 
 const MAX_IMAGE_SIZE = 4 * 1024 * 1024;
 const MAX_GARMENTS = 12;
@@ -17,6 +22,15 @@ function safeProductUrl(value) {
     } catch {
         return null;
     }
+}
+
+function withGenderSuffix(value, gender, forSearch = false) {
+    const base = String(value ?? "")
+        .trim()
+        .replace(/\s+(?:for\s+)?(?:men|women)$/i, "")
+        .trim();
+    if (!base || !["men", "women"].includes(gender)) return base;
+    return forSearch ? `${base} for ${gender}` : `${base} ${gender[0].toUpperCase()}${gender.slice(1)}`;
 }
 
 const ALLOWED_SUBTYPES_BY_TYPE = {
@@ -72,10 +86,13 @@ const ALLOWED_SUBTYPES_BY_TYPE = {
 const ITEM_TYPES = ["top", "bottom", "footwear", "outerwear"];
 
 const OutfitAnalyzer = () => {
+    const navigate = useNavigate();
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
     const previewUrl = useRef("");
     const discoveryRevision = useRef(0);
+    const [discoveryVersion, setDiscoveryVersion] = useState(0);
+    const nextSlotId = useRef(0);
     const [draft, setDraft] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [catalogResults, setCatalogResults] = useState({});
@@ -86,6 +103,11 @@ const OutfitAnalyzer = () => {
     const [retailerLinksLoading, setRetailerLinksLoading] = useState({});
     const [retailerLinksError, setRetailerLinksError] = useState("");
     const [error, setError] = useState("");
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const [reviewOccasionId, setReviewOccasionId] = useState("");
+    const [reviewOutfitTypeId, setReviewOutfitTypeId] = useState("");
+    const [savingOutfit, setSavingOutfit] = useState(false);
+    const saveInFlight = useRef(false);
 
     useEffect(() => () => {
         if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
@@ -93,6 +115,7 @@ const OutfitAnalyzer = () => {
 
     const invalidateDiscovery = () => {
         discoveryRevision.current += 1;
+        setDiscoveryVersion(discoveryRevision.current);
         setCatalogResults({});
         setSelectedCatalogItems({});
         setCatalogSearching(false);
@@ -109,6 +132,9 @@ const OutfitAnalyzer = () => {
         setImagePreview("");
         setError("");
         setDraft(null);
+        setReviewOpen(false);
+        setReviewOccasionId("");
+        setReviewOutfitTypeId("");
         invalidateDiscovery();
 
         if (file && file.size > MAX_IMAGE_SIZE) {
@@ -128,6 +154,7 @@ const OutfitAnalyzer = () => {
     const handleAnalyze = async (event) => {
         event.preventDefault();
         setError("");
+        setReviewOpen(false);
 
         if (!imageFile) {
             setError("Choose an outfit image first.");
@@ -146,7 +173,15 @@ const OutfitAnalyzer = () => {
                 throw new Error("The analyzer returned an unexpected response.");
             }
 
-            setDraft(response.data);
+            setDraft({
+                ...response.data,
+                itemSuggestions: response.data.itemSuggestions.map((item) => ({
+                    ...item,
+                    localSlotId: ++nextSlotId.current,
+                })),
+            });
+            setReviewOccasionId("");
+            setReviewOutfitTypeId("");
             invalidateDiscovery();
         } catch (requestError) {
             setError(
@@ -159,6 +194,22 @@ const OutfitAnalyzer = () => {
         }
     };
 
+    const handleSaveOutfit = async (formData) => {
+        if (saveInFlight.current) return;
+        saveInFlight.current = true;
+        setSavingOutfit(true);
+        try {
+            const response = await createOutfit(formData);
+            if (!response.success || !response.outfit?._id) {
+                throw new Error("The server did not confirm that the outfit was saved.");
+            }
+            navigate("/outfits", { replace: true });
+        } finally {
+            saveInFlight.current = false;
+            setSavingOutfit(false);
+        }
+    };
+
     const updateOutfitField = (field, value) => {
         if (field === "genderSuggestion") invalidateDiscovery();
         setDraft((current) => ({
@@ -167,6 +218,16 @@ const OutfitAnalyzer = () => {
                 ...current.outfitDraft,
                 [field]: value,
             },
+            itemSuggestions: field === "genderSuggestion"
+                ? current.itemSuggestions.map((item) => ({
+                    ...item,
+                    genderSuggestion: value,
+                    name: withGenderSuffix(item.name, value),
+                    searchQueries: item.searchQueries.map((query) =>
+                        withGenderSuffix(query, value, true)
+                    ),
+                }))
+                : current.itemSuggestions,
         }));
     };
 
@@ -202,13 +263,15 @@ const OutfitAnalyzer = () => {
 
 const addGarment = () => {
     if (draft.itemSuggestions.length >= MAX_GARMENTS) return;
+    const localSlotId = ++nextSlotId.current;
     invalidateDiscovery();
     setDraft((current) => ({
         ...current,
         itemSuggestions: [
             ...current.itemSuggestions,
             {
-                name: "New T-Shirt",
+                localSlotId,
+                name: withGenderSuffix("T-Shirt", current.outfitDraft.genderSuggestion),
                 brand: null,
                 genderSuggestion:
                     current.outfitDraft.genderSuggestion ?? null,
@@ -220,7 +283,7 @@ const addGarment = () => {
                     fit: null,
                     pattern: null,
                 },
-                searchQueries: ["t-shirt", "casual t-shirt"],
+                searchQueries: [withGenderSuffix("t-shirt", current.outfitDraft.genderSuggestion, true)],
                 isWardrobeEssential: false,
                 missingRequiredItemFields: [
                     "image",
@@ -313,8 +376,8 @@ const removeGarment = (index) => {
 
     const buildGarmentPayload = (item) => {
       const gender =
-          item.genderSuggestion ||
           draft?.outfitDraft?.genderSuggestion ||
+          item.genderSuggestion ||
           null;
       return {
           itemType: item.itemType,
@@ -443,8 +506,8 @@ const removeGarment = (index) => {
                     Outfit Analyzer
                 </h1>
                 <p className="mt-2 text-sm text-text-secondary">
-                    Analyze an outfit image and review an editable draft.
-                    Nothing is saved to the database.
+                    Analyze an outfit image, review garments, and select or save products.
+                    The outfit draft is not saved yet.
                 </p>
             </div>
 
@@ -662,7 +725,7 @@ const removeGarment = (index) => {
 
                         {draft.itemSuggestions.map((item, index) => (
                             <article
-                                key={`${item.itemType}-${item.itemSubType}-${index}`}
+                                key={item.localSlotId}
                                 className="space-y-4 rounded-xl border border-border bg-bg p-4 sm:p-6"
                             >
                                 <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_1fr_auto]">
@@ -830,6 +893,17 @@ const removeGarment = (index) => {
                                             : "Open retailer searches"}
                                     </button>
                                 </div>
+
+                                <CatalogItemSearch
+                                    key={`${item.localSlotId}-${discoveryVersion}`}
+                                    garment={item}
+                                    outfitGender={draft.outfitDraft.genderSuggestion}
+                                    selectedItem={selectedCatalogItems[index]}
+                                    onSelect={(selectedItem) => setSelectedCatalogItems((current) => ({
+                                        ...current,
+                                        [index]: selectedItem,
+                                    }))}
+                                />
 
   {catalogResults[index] && (
       <div className="space-y-3 border-t border-border pt-4">
@@ -1015,13 +1089,75 @@ const removeGarment = (index) => {
           )}
       </div>
   )}
+                                {selectedCatalogItems[index] && (
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                                        <div className="flex items-center gap-3">
+                                            {selectedCatalogItems[index].image?.url && (
+                                                <img
+                                                    src={selectedCatalogItems[index].image.url}
+                                                    alt=""
+                                                    className="h-12 w-12 rounded object-cover"
+                                                />
+                                            )}
+                                            <div>
+                                                <p className="text-xs font-medium text-text-muted">Selected saved item</p>
+                                                <p className="text-sm text-text-primary">{selectedCatalogItems[index].name}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedCatalogItems((current) => {
+                                                const next = { ...current };
+                                                delete next[index];
+                                                return next;
+                                            })}
+                                            className="text-sm text-accent-hover underline"
+                                        >
+                                            Clear selection
+                                        </button>
+                                    </div>
+                                )}
+                                <ProductImportPanel
+                                    garment={item}
+                                    outfitGender={draft.outfitDraft.genderSuggestion}
+                                    selectedItem={selectedCatalogItems[index]}
+                                    revision={discoveryVersion}
+                                    onSelectItem={(selectedItem, selectionRevision) => {
+                                        if (selectionRevision !== discoveryRevision.current) return;
+                                        setSelectedCatalogItems((current) => ({
+                                            ...current,
+                                            [index]: selectedItem,
+                                        }));
+                                    }}
+                                />
                             </article>
                         ))}
                     </div>
 
+                    {reviewOpen ? (
+                        <OutfitReviewPanel
+                            draft={draft}
+                            imageFile={imageFile}
+                            imagePreview={imagePreview}
+                            selectedItems={selectedCatalogItems}
+                            occasionId={reviewOccasionId}
+                            onOccasionChange={setReviewOccasionId}
+                            outfitTypeId={reviewOutfitTypeId}
+                            onOutfitTypeChange={setReviewOutfitTypeId}
+                            saving={savingOutfit}
+                            onBack={() => setReviewOpen(false)}
+                            onSave={handleSaveOutfit}
+                        />
+                    ) : (
+                        <button type="button" onClick={() => setReviewOpen(true)}
+                            className="rounded-lg bg-accent px-5 py-2.5 font-medium text-on-accent hover:bg-accent-hover">
+                            Review outfit
+                        </button>
+                    )}
+
                     <p className="text-sm text-text-muted">
-                        Changes are only held in this page. They are not saved
-                        and will be lost when you leave or refresh it.
+                        The outfit draft and garment selections are held in this page and will be lost on refresh.
+                        Items you explicitly save are stored in the catalog.
                     </p>
                 </section>
             )}

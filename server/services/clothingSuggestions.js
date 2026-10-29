@@ -67,3 +67,78 @@ export function normalizeClothingSuggestions(analysis, allowedSubtypesByType) {
         }),
     };
 }
+
+const COLOR_PREFIXES = [
+    "off white", "light blue", "dark blue", "navy blue", "light grey",
+    "dark grey", "light gray", "dark gray", "olive green", "forest green",
+    "white", "black", "beige", "cream", "ivory", "tan", "camel",
+    "brown", "maroon", "burgundy", "red", "pink", "orange", "yellow",
+    "green", "olive", "blue", "navy", "purple", "grey", "gray", "khaki",
+    "silver", "gold",
+];
+
+function titleCase(value) {
+    return value.toLowerCase().replace(/(^|[\s-])([a-z])/g,
+        (_, separator, letter) => separator + letter.toUpperCase());
+}
+
+function garmentCoreName(item, primaryColor) {
+    let name = String(item.name ?? "").trim() ||
+        String(item.itemSubType ?? "garment").replaceAll("-", " ");
+    name = name
+        .replace(/^(?:men's|women's|men|women)\s+/i, "")
+        .replace(/\s+(?:for\s+)?(?:men|women)$/i, "")
+        .trim();
+
+    const prefixes = [primaryColor, ...COLOR_PREFIXES]
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length);
+    for (const color of prefixes) {
+        if (name.toLowerCase().startsWith(`${color.toLowerCase()} `) ||
+            name.toLowerCase().startsWith(`${color.toLowerCase()}-`)) {
+            name = name.slice(color.length).replace(/^[\s\-&,]+/, "").trim();
+            break;
+        }
+    }
+    const subtype = String(item.itemSubType ?? "").toLowerCase();
+    const specificSubtype = {
+        "wide-leg-jeans": /^jeans?$/i,
+        "wide-leg-pants": /^pants?$/i,
+        "wide-leg-trousers": /^trousers?$/i,
+        "button-up-shirt": /^shirts?$/i,
+        "cargo-pants": /^pants?$/i,
+    };
+    if (specificSubtype[subtype]?.test(name)) {
+        name = subtype.replace(/-(?=[^-]+$)/, " ");
+    }
+    return name || String(item.itemSubType ?? "garment").replaceAll("-", " ");
+}
+
+/** Give every analyzed garment one specific, editable default query. */
+export function normalizeGarmentDiscoveryFields(analysis) {
+    if (!analysis || !Array.isArray(analysis.itemSuggestions)) return analysis;
+    const outfitGender = analysis.outfitDraft?.genderSuggestion;
+    return {
+        ...analysis,
+        itemSuggestions: analysis.itemSuggestions.map((item) => {
+            if (!item || typeof item !== "object") return item;
+            const primaryColor = Array.isArray(item.visualAnalysis?.colors)
+                ? String(item.visualAnalysis.colors[0] ?? "").trim() : "";
+            const gender = ["men", "women"].includes(outfitGender)
+                ? outfitGender : (["men", "women"].includes(item.genderSuggestion)
+                    ? item.genderSuggestion : null);
+            const core = garmentCoreName(item, primaryColor);
+            const coloredName = `${primaryColor ? `${primaryColor} ` : ""}${core}`.trim();
+            const name = `${titleCase(coloredName)}${gender ? ` ${titleCase(gender)}` : ""}`;
+            const query = `${coloredName.replaceAll("-", " ").toLowerCase()}` +
+                (gender ? ` for ${gender}` : "");
+
+            return {
+                ...item,
+                name,
+                genderSuggestion: gender,
+                searchQueries: [query],
+            };
+        }),
+    };
+}

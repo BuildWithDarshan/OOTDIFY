@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { authMiddleware } from "../middleware/authMiddleware.js";
 import { adminMiddleware } from "../middleware/adminMiddleware.js";
-import { normalizeClothingSuggestions } from "../services/clothingSuggestions.js";
+import { normalizeClothingSuggestions, normalizeGarmentDiscoveryFields } from "../services/clothingSuggestions.js";
 import { getOutfitDescription } from "../services/outfitDescriptionService.js";
 import { requestOllamaAnalysis } from "../services/ollamaRequestService.js";
 
@@ -114,7 +114,7 @@ export function isValidAnalysis(analysis) {
             !isNullableString(item.visualAnalysis.fit) ||
             !isNullableString(item.visualAnalysis.pattern) ||
             !Array.isArray(item.searchQueries) ||
-            item.searchQueries.length !== 2 ||
+            item.searchQueries.length !== 1 ||
             !item.searchQueries.every((query) => typeof query === "string")
         ) {
             return false;
@@ -204,13 +204,13 @@ Analyze the supplied outfit image for OOTDIFY. Return JSON only.
 Check the complete outfit, including the waist and legs, before returning the items. Do not omit clearly visible pants, trousers, jeans, shorts, skirts, or leggings. Do not invent garments that are not visible.
 
 For each garment, return:
-- name: a short garment name
+- name: a short garment name with its main visible color and distinctive garment details (for example, brown leather jacket or dark blue wide-leg jeans)
 - brand: null unless clearly visible
 - genderSuggestion: "men", "women", or null
 - itemType: "top", "bottom", "footwear", or "outerwear"
 - itemSubType: a specific subtype
 - visualAnalysis: visible colors, one short visual description, fit, and pattern
-- searchQueries: exactly two distinct product searches based on visible details
+- searchQueries: exactly one product search with the main visible color, specific garment, and "for men" or "for women" when the outfit gender is known
 
 Allowed top subtypes: t-shirt, shirt, button-up-shirt, polo-shirt, tank-top, sweater, hoodie, sweatshirt, kurta, blouse, crop-top.
  Allowed bottom subtypes: jeans, trousers, pants, chinos, shorts, joggers, cargo-pants, wide-leg-jeans, skirt, leggings, wide-leg-trousers, wide-leg-pants.
@@ -244,7 +244,7 @@ Return this structure:
         "fit": null,
         "pattern": null
       },
-      "searchQueries": ["first useful search", "second useful search"]
+      "searchQueries": ["brown leather jacket for women"]
     }
   ]
 }
@@ -340,6 +340,7 @@ Do not guess brands, materials, or hidden details. Use null for unknown fit or p
 }
 
          analysis = normalizeClothingSuggestions(analysis, allowedSubtypesByType);
+         analysis = normalizeGarmentDiscoveryFields(analysis);
          if (isRecord(analysis) && Array.isArray(analysis.itemSuggestions) &&
              analysis.itemSuggestions.length === 0) {
              return res.status(422).json({

@@ -1,47 +1,44 @@
-import {React, useEffect, useState} from 'react'
+import {useState} from 'react'
 
 const GENDERS = ["men", "women"];
 const ITEM_TYPES = ["top","bottom","footwear","outerwear","accessory","other"]
 
-const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) => {
+const ItemFormFields = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) => {
+    const isNewItem = !initialData?._id;
 
-    const [name, setName] = useState("");
-    const [price, setPrice] = useState("");
-    const [referralLink, setReferralLink] = useState("");
-    const [shoppingSite, setShoppingSite] = useState("");
-    const [gender, setGender] = useState("men");
-    const [itemType, setItemType] = useState("top");
-    const [itemSubType, setItemSubType] = useState("");
-    const [brand, setBrand] = useState("");
-    const [isWardrobeEssential, setIsWardrobeEssential] = useState(false);
+    const [name, setName] = useState(initialData?.name ?? "");
+    const [price, setPrice] = useState(initialData?.price ?? "");
+    const [referralLink, setReferralLink] = useState(initialData?.referralLink ?? "");
+    const [shoppingSite, setShoppingSite] = useState(initialData?.shoppingSite ?? "");
+    const [gender, setGender] = useState(initialData?.gender ?? "men");
+    const [itemType, setItemType] = useState(initialData?.itemType ?? "top");
+    const [itemSubType, setItemSubType] = useState(initialData?.itemSubType ?? "");
+    const [brand, setBrand] = useState(initialData?.brand ?? "");
+    const [isWardrobeEssential, setIsWardrobeEssential] = useState(Boolean(initialData?.isWardrobeEssential));
     const [imageFile, setImageFile] = useState(null);
     const [error, setError] = useState("");
-
-    useEffect(() => {
-        if(initialData) {
-            setName(initialData.name || "");
-            setPrice(initialData.price ?? "");
-            setReferralLink(initialData.referralLink || "");
-            setShoppingSite(initialData.shoppingSite || "");
-            setGender(initialData.gender || "men");
-            setItemType(initialData.itemType || "top");
-            setItemSubType(initialData.itemSubType || "");
-            setBrand(initialData.brand || "");
-            setIsWardrobeEssential(!!initialData.isWardrobeEssential);
-        }
-    },[initialData]);
 
     const handleSubmit = async(e) => {
         e.preventDefault();
         setError("");
 
-        if(!name || !price || !referralLink || !shoppingSite || !itemSubType) {
-            setError("Name, price, referral link, shopping site, and sub-type are all required");
+        if(!name.trim() || String(price).trim() === "" || !referralLink.trim() || !shoppingSite.trim() || !gender || !itemType || !itemSubType.trim()) {
+            setError("Name, price, referral link, shopping site, gender, type, and sub-type are all required");
             return;
         }
 
-        if(!initialData && !imageFile) {
+        if(!Number.isFinite(Number(price)) || Number(price) < 0) {
+            setError("Price must be a non-negative number");
+            return;
+        }
+
+        if(isNewItem && !imageFile) {
             setError("An item image is required");
+            return;
+        }
+
+        if(imageFile && imageFile.size > 4 * 1024 * 1024) {
+            setError("Choose an item image smaller than 4 MB");
             return;
         }
 
@@ -60,7 +57,7 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
         try {
             await onSubmit(formData);
         } catch (err) {
-            setError(err.response?.data?.message || "Something went wrong while saving the item");
+            setError(err.response?.data?.message || err.message || "Something went wrong while saving the item");
         }
     }
   return (
@@ -68,11 +65,11 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
       {error && <div className='text-sm text-white bg-red-500 rounded-lg px-4 py-2'>{error}</div>}
       <div>
         <label className='block text-sm text-text-secondary mb-1'>Item Image</label>
-        {initialData?.image?.url && !imageFile && (
+        {!isNewItem && initialData?.image?.url && !imageFile && (
             <img src={initialData.image.url} alt={initialData.name} className='w-20 h-20 rounded-lg object-cover mb-2'/>
         )}
-        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setImageFile(e.target.files[0])} className='w-full text-sm text-text-secondary'/>
-        {initialData && (
+        <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={(e) => setImageFile(e.target.files?.[0] ?? null)} className='w-full text-sm text-text-secondary'/>
+        {!isNewItem && (
             <p className='text-xs text-text-muted mt-1'>Leave empty to keep the current image.</p>
         )}
       </div>
@@ -114,6 +111,7 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
                     onChange={(e) => setGender(e.target.value)}
                     className="w-full border border-border rounded-lg px-3 py-2 text-text-primary focus:outline-nonefocus:border-accent"
             >
+                    <option value="" disabled>Choose gender</option>
                     {GENDERS.map((g) => (
                         <option key={g} value={g}>{g}</option>
                     ))}
@@ -165,5 +163,12 @@ const ItemForm = ({ initialData, onSubmit, submitting, submitLabel = "Save"}) =>
     </form>
   )
 }
+
+const ItemForm = (props) => (
+    <ItemFormFields
+        key={props.initialData?._id ?? props.initialData?.referralLink ?? "new-item"}
+        {...props}
+    />
+);
 
 export default ItemForm

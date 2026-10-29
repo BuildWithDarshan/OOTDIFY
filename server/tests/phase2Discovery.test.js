@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { matchCatalogItem } from "../services/catalogMatchService.js";
-import { keepClothingSuggestions, normalizeClothingSuggestions } from "../services/clothingSuggestions.js";
+import { keepClothingSuggestions, normalizeClothingSuggestions, normalizeGarmentDiscoveryFields } from "../services/clothingSuggestions.js";
 import { isValidAnalysis } from "../routes/outfitAnalyzerRoutes.js";
 import { buildRetailerSearchLinks } from "../services/retailerSearchLinkService.js";
 import { getApprovedRetailerById, getApprovedRetailers } from "../config/approvedRetailers.js";
@@ -102,7 +102,9 @@ test("the photographed outfit's Ollama subtype labels normalize to accepted clot
     });
     assert.deepEqual(normalized.itemSuggestions.map((item) => item.itemSubType),
         ["t-shirt", "wide-leg-jeans", "loafers"]);
-    assert.equal(isValidAnalysis(normalized), true);
+    const withDiscoveryFields = normalizeGarmentDiscoveryFields(normalized);
+    assert.equal(isValidAnalysis(withDiscoveryFields), true);
+    assert.deepEqual(withDiscoveryFields.itemSuggestions.map((item) => item.searchQueries.length), [1, 1, 1]);
 
     const singularLoafer = {
         ...analysis,
@@ -111,6 +113,52 @@ test("the photographed outfit's Ollama subtype labels normalize to accepted clot
     assert.equal(normalizeClothingSuggestions(singularLoafer, {
         footwear: ["loafers"],
     }).itemSuggestions[0].itemSubType, "loafers");
+});
+
+test("analyzed garments default to a color-specific name and one gendered query", () => {
+    const analysis = {
+        outfitDraft: { genderSuggestion: "women" },
+        itemSuggestions: [{
+            name: "Leather jacket for men",
+            genderSuggestion: "men",
+            itemSubType: "jacket",
+            visualAnalysis: { colors: ["brown"] },
+            searchQueries: ["leather jacket", "casual jacket"],
+        }],
+    };
+    const [item] = normalizeGarmentDiscoveryFields(analysis).itemSuggestions;
+    assert.equal(item.name, "Brown Leather Jacket Women");
+    assert.equal(item.genderSuggestion, "women");
+    assert.deepEqual(item.searchQueries, ["brown leather jacket for women"]);
+});
+
+test("wide-leg jeans retain their fit and main color in men's defaults", () => {
+    const [item] = normalizeGarmentDiscoveryFields({
+        outfitDraft: { genderSuggestion: "men" },
+        itemSuggestions: [{
+            name: "Blue wide-leg jeans",
+            itemSubType: "wide-leg-jeans",
+            visualAnalysis: { colors: ["dark blue"] },
+            searchQueries: ["jeans", "wide-leg pants"],
+        }],
+    }).itemSuggestions;
+
+    assert.equal(item.name, "Dark Blue Wide-Leg Jeans Men");
+    assert.deepEqual(item.searchQueries, ["dark blue wide leg jeans for men"]);
+});
+
+test("a generic model name uses the more specific garment subtype", () => {
+    const [item] = normalizeGarmentDiscoveryFields({
+        outfitDraft: { genderSuggestion: "men" },
+        itemSuggestions: [{
+            name: "Jeans",
+            itemSubType: "wide-leg-jeans",
+            visualAnalysis: { colors: ["dark blue"] },
+        }],
+    }).itemSuggestions;
+
+    assert.equal(item.name, "Dark Blue Wide-Leg Jeans Men");
+    assert.deepEqual(item.searchQueries, ["dark blue wide leg jeans for men"]);
 });
 
 test("the source registry contains 17 approved sources and reports unavailable search links", () => {
